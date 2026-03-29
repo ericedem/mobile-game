@@ -138,6 +138,15 @@
       </div>
     </a>
 
+    <a href="factory-idle/" class="game-card" id="card-factory">
+      <div class="game-card-banner" id="banner-factory"></div>
+      <div class="game-card-body">
+        <div class="game-card-title">Factory Idle</div>
+        <div class="game-card-desc">Discover resources, mine by hand, build furnaces, and smelt ores into bars. How big can you grow your operation?</div>
+        <span class="game-card-tag">Idle / Crafting</span>
+      </div>
+    </a>
+
     <div class="game-card coming-soon">
       <div class="game-card-banner" style="background: #1e1e3a; height: 80px;"></div>
       <div class="game-card-body">
@@ -239,6 +248,79 @@
     ctx.moveTo(350, 30);
     ctx.lineTo(320, 90);
     ctx.stroke();
+
+    // Draw Factory Idle banner
+    const fBanner = document.getElementById('banner-factory');
+    fBanner.style.background = 'linear-gradient(135deg, #12131a 0%, #1a1b2e 100%)';
+    const fCanvas = document.createElement('canvas');
+    fCanvas.width = 500;
+    fCanvas.height = 120;
+    fCanvas.style.width = '100%';
+    fCanvas.style.height = '100%';
+    fBanner.appendChild(fCanvas);
+    const fc = fCanvas.getContext('2d');
+
+    // Stone chunks
+    fc.fillStyle = '#999';
+    fc.fillRect(40, 55, 18, 18);
+    fc.fillStyle = '#777';
+    fc.fillRect(65, 60, 14, 14);
+    fc.fillRect(48, 70, 10, 10);
+
+    // Coal
+    fc.fillStyle = '#444';
+    fc.fillRect(130, 58, 16, 16);
+    fc.fillStyle = '#333';
+    fc.fillRect(152, 62, 12, 12);
+
+    // Furnace
+    fc.fillStyle = '#666';
+    fc.fillRect(220, 35, 60, 55);
+    fc.fillStyle = '#555';
+    fc.fillRect(225, 40, 50, 45);
+    fc.fillStyle = '#f0a030';
+    fc.fillRect(235, 55, 30, 20);
+    fc.fillStyle = '#ff6030';
+    fc.fillRect(240, 58, 20, 14);
+    // Chimney
+    fc.fillStyle = '#666';
+    fc.fillRect(255, 20, 12, 20);
+    fc.fillStyle = '#888';
+    fc.beginPath();
+    fc.arc(261, 18, 6, 0, Math.PI * 2);
+    fc.fill();
+    fc.fillStyle = '#666';
+    fc.beginPath();
+    fc.arc(259, 12, 4, 0, Math.PI * 2);
+    fc.fill();
+
+    // Iron ore
+    fc.fillStyle = '#b05030';
+    fc.fillRect(340, 58, 16, 16);
+    fc.fillStyle = '#904020';
+    fc.fillRect(362, 55, 12, 12);
+
+    // Iron bar
+    fc.fillStyle = '#aab0b8';
+    fc.fillRect(420, 58, 40, 12);
+    fc.fillStyle = '#9098a0';
+    fc.fillRect(420, 58, 40, 4);
+
+    // Arrow
+    fc.strokeStyle = 'rgba(240,160,48,0.3)';
+    fc.lineWidth = 2;
+    fc.beginPath();
+    fc.moveTo(170, 68);
+    fc.lineTo(215, 68);
+    fc.stroke();
+    fc.beginPath();
+    fc.moveTo(285, 68);
+    fc.lineTo(330, 68);
+    fc.stroke();
+    fc.beginPath();
+    fc.moveTo(385, 65);
+    fc.lineTo(415, 65);
+    fc.stroke();
   </script>
 </body>
 </html>

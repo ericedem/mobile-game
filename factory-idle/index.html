@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Factory Idle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game">
+    <header>
+      <a href="../" class="back-link">&larr; Arcade</a>
+      <h1>Factory Idle</h1>
+    </header>
+
+    <div id="resources-panel">
+      <h2>Resources</h2>
+      <div id="resources-list"></div>
+    </div>
+
+    <div id="explore-panel">
+      <h2>Explore</h2>
+      <p class="panel-desc">Search for new resource deposits</p>
+      <div id="explore-buttons"></div>
+    </div>
+
+    <div id="mine-panel" class="hidden">
+      <h2>Mine</h2>
+      <p class="panel-desc">Tap to collect resources</p>
+      <div id="mine-buttons"></div>
+    </div>
+
+    <div id="craft-panel" class="hidden">
+      <h2>Build</h2>
+      <div id="craft-buttons"></div>
+    </div>
+
+    <div id="smelt-panel" class="hidden">
+      <h2>Furnace</h2>
+      <p class="panel-desc">Smelt ores into bars using coal</p>
+      <div id="smelt-buttons"></div>
+      <div id="furnace-status" class="hidden">
+        <div id="furnace-progress-container" class="bar-container">
+          <div id="furnace-progress-bar" class="bar"></div>
+        </div>
+        <span id="furnace-status-text"></span>
+      </div>
+    </div>
+
+    <div id="message-log"></div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

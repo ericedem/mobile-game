@@ -9,6 +9,7 @@ A collection of mobile-friendly web games, hosted on GitHub Pages.
 ```
 /                          # Root hub page (game picker)
 /sword-and-monsters/       # RPG monster battler game
+/factory-idle/             # Resource management & factory automation game
 /.github/workflows/        # GitHub Actions deploy to Pages
 ```
 
