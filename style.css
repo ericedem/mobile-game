@@ -82,12 +82,16 @@ body {
   transform: none;
 }
 
+.btn-secondary {
+  background: #3a3a5e;
+}
+
 /* HUD */
 #hud {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16px 16px 8px;
+  padding: 12px 12px 6px;
   width: 100%;
   gap: 8px;
 }
@@ -103,30 +107,42 @@ body {
 #player-hud span:first-child,
 #monster-hud span:first-child {
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 #level-display {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #e94560;
   font-weight: bold;
   white-space: nowrap;
   padding-top: 2px;
+  text-align: center;
+}
+
+#gold-display {
+  color: #c4a35a;
+  margin-top: 2px;
 }
 
 .bar-container {
   width: 100%;
-  height: 14px;
+  height: 12px;
   background: #333;
-  border-radius: 7px;
+  border-radius: 6px;
   overflow: hidden;
+}
+
+.xp-bar-container {
+  height: 6px;
+  margin-top: 3px;
+  border-radius: 3px;
 }
 
 .bar {
   height: 100%;
-  border-radius: 7px;
+  border-radius: 6px;
   transition: width 0.3s ease;
 }
 
@@ -144,11 +160,17 @@ body {
   background: linear-gradient(to right, #e94560, #c73652) !important;
 }
 
+.xp-bar {
+  background: linear-gradient(to right, #7c4dff, #536dfe);
+  width: 0%;
+  border-radius: 3px;
+}
+
 .bar-text {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #999;
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 #monster-hud .bar-text {
@@ -318,10 +340,23 @@ body {
 
 #victory-reward, #gameover-text {
   color: #999;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   font-size: 1.1rem;
   text-align: center;
   line-height: 1.6;
+  white-space: pre-line;
+}
+
+#victory-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+}
+
+#victory-buttons .btn {
+  width: 100%;
 }
 
 /* Battle screen layout */
@@ -357,4 +392,131 @@ body {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   60% { opacity: 1; transform: translateY(-40px) scale(1.2); }
   100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+}
+
+/* ===== SHOP ===== */
+#shop-screen {
+  justify-content: flex-start;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+
+#shop-screen h2 {
+  font-size: 1.8rem;
+  color: #c4a35a;
+  margin-bottom: 8px;
+}
+
+#shop-gold {
+  font-size: 1.1rem;
+  color: #c4a35a;
+  margin-bottom: 16px;
+}
+
+#shop-equipment {
+  width: 100%;
+  margin-bottom: 16px;
+  background: #252545;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+#shop-equipment h3 {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.equipped-slot {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #333;
+}
+
+.equipped-slot:last-child {
+  border-bottom: none;
+}
+
+.slot-label {
+  color: #888;
+  min-width: 70px;
+}
+
+.slot-item {
+  color: #eee;
+  flex: 1;
+}
+
+.slot-stat {
+  color: #4ecca3;
+  text-align: right;
+  min-width: 70px;
+}
+
+#shop-items {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+#shop-items h3 {
+  font-size: 0.85rem;
+  color: #888;
+  margin: 12px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #252545;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.shop-item.owned {
+  opacity: 0.5;
+}
+
+.shop-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shop-item-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+}
+
+.shop-item-stat {
+  font-size: 0.75rem;
+  color: #4ecca3;
+}
+
+.shop-item-stat.downgrade {
+  color: #e94560;
+}
+
+.shop-buy-btn {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  min-width: 70px;
+}
+
+.shop-buy-btn.owned {
+  background: #333;
+  color: #666;
+}
+
+#shop-leave-btn {
+  width: 100%;
+  margin-top: 8px;
+  background: #4ecca3;
 }

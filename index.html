@@ -21,13 +21,20 @@
     <div id="battle-screen" class="screen">
       <div id="hud">
         <div id="player-hud">
-          <span id="player-name">Hero</span>
+          <span id="player-name">Hero Lv.1</span>
           <div class="bar-container">
             <div id="player-hp-bar" class="bar hp-bar"></div>
           </div>
           <span id="player-hp-text" class="bar-text"></span>
+          <div class="bar-container xp-bar-container">
+            <div id="player-xp-bar" class="bar xp-bar"></div>
+          </div>
+          <span id="player-xp-text" class="bar-text"></span>
         </div>
-        <div id="level-display">Floor <span id="floor-num">1</span></div>
+        <div id="level-display">
+          <div>Area <span id="area-num">1</span></div>
+          <div id="gold-display">0g</div>
+        </div>
         <div id="monster-hud">
           <span id="monster-name"></span>
           <div class="bar-container">
@@ -57,7 +64,22 @@
     <div id="victory-screen" class="screen">
       <h2 id="victory-text">Monster Defeated!</h2>
       <p id="victory-reward"></p>
-      <button id="next-btn" class="btn">Continue Deeper</button>
+      <div id="victory-buttons">
+        <button id="next-btn" class="btn">Fight Again</button>
+        <button id="next-area-btn" class="btn btn-secondary">Next Area</button>
+      </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div id="shop-screen" class="screen">
+      <h2>Shop</h2>
+      <div id="shop-gold">Gold: <span id="shop-gold-amount">0</span></div>
+      <div id="shop-equipment">
+        <h3>Equipped</h3>
+        <div id="equipped-list"></div>
+      </div>
+      <div id="shop-items"></div>
+      <button id="shop-leave-btn" class="btn">Enter Area <span id="shop-next-area"></span></button>
     </div>
 
     <!-- Game Over Screen -->
@@ -69,6 +91,7 @@
   </div>
 
   <script src="monsters.js"></script>
+  <script src="items.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
