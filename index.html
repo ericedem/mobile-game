@@ -5,103 +5,240 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Sword & Monsters</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Game Arcade</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0f0f1a;
+      color: #eee;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    header {
+      padding: 40px 20px 20px;
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      color: #7c4dff;
+      text-shadow: 0 0 25px rgba(124, 77, 255, 0.4);
+      margin-bottom: 6px;
+    }
+
+    header p {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .games-grid {
+      width: 100%;
+      max-width: 500px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .game-card {
+      background: #1a1a2e;
+      border-radius: 16px;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      display: block;
+      border: 1px solid #252545;
+    }
+
+    .game-card:active {
+      transform: scale(0.98);
+    }
+
+    .game-card-banner {
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-card-banner canvas {
+      image-rendering: pixelated;
+    }
+
+    .game-card-body {
+      padding: 16px;
+    }
+
+    .game-card-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .game-card-desc {
+      font-size: 0.85rem;
+      color: #888;
+      line-height: 1.4;
+    }
+
+    .game-card-tag {
+      display: inline-block;
+      background: #252545;
+      color: #aaa;
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .coming-soon {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .coming-soon .game-card-tag {
+      background: #333;
+      color: #666;
+    }
+  </style>
 </head>
 <body>
-  <div id="game">
-    <!-- Title Screen -->
-    <div id="title-screen" class="screen active">
-      <h1>Sword &amp; Monsters</h1>
-      <p class="subtitle">Defeat the horde. How far can you go?</p>
-      <button id="start-btn" class="btn">Draw Your Sword</button>
-    </div>
+  <header>
+    <h1>Game Arcade</h1>
+    <p>Pick a game to play</p>
+  </header>
 
-    <!-- Story Screen -->
-    <div id="story-screen" class="screen">
-      <div id="story-content">
-        <h2 id="story-title"></h2>
-        <div id="story-text"></div>
+  <div class="games-grid">
+    <a href="sword-and-monsters/" class="game-card" id="card-sword">
+      <div class="game-card-banner" id="banner-sword"></div>
+      <div class="game-card-body">
+        <div class="game-card-title">Sword & Monsters</div>
+        <div class="game-card-desc">Fight through 10 areas of increasingly dangerous monsters. Level up, buy equipment, and defeat the Demon Lord.</div>
+        <span class="game-card-tag">RPG</span>
       </div>
-      <button id="story-continue-btn" class="btn">Continue</button>
-    </div>
+    </a>
 
-    <!-- Battle Screen -->
-    <div id="battle-screen" class="screen">
-      <div id="hud">
-        <div id="player-hud">
-          <span id="player-name">Hero Lv.1</span>
-          <div class="bar-container">
-            <div id="player-hp-bar" class="bar hp-bar"></div>
-          </div>
-          <span id="player-hp-text" class="bar-text"></span>
-          <div class="bar-container xp-bar-container">
-            <div id="player-xp-bar" class="bar xp-bar"></div>
-          </div>
-          <span id="player-xp-text" class="bar-text"></span>
-        </div>
-        <div id="level-display">
-          <div id="area-num"></div>
-          <div id="gold-display">0g</div>
-        </div>
-        <div id="monster-hud">
-          <span id="monster-name"></span>
-          <div class="bar-container">
-            <div id="monster-hp-bar" class="bar hp-bar enemy"></div>
-          </div>
-          <span id="monster-hp-text" class="bar-text"></span>
-        </div>
+    <div class="game-card coming-soon">
+      <div class="game-card-banner" style="background: #1e1e3a; height: 80px;"></div>
+      <div class="game-card-body">
+        <div class="game-card-title">More games coming soon...</div>
+        <div class="game-card-desc">Stay tuned for new additions to the arcade.</div>
+        <span class="game-card-tag">Coming Soon</span>
       </div>
-
-      <div id="arena">
-        <div id="monster-container">
-          <canvas id="monster-canvas" width="200" height="200"></canvas>
-        </div>
-        <div id="damage-flash"></div>
-        <div id="slash-effect"></div>
-      </div>
-
-      <div id="battle-log"></div>
-
-      <div id="controls">
-        <button id="attack-btn" class="btn attack-btn">Attack</button>
-        <button id="heal-btn" class="btn heal-btn">Heal <span id="heal-count"></span></button>
-      </div>
-    </div>
-
-    <!-- Victory Screen (per monster) -->
-    <div id="victory-screen" class="screen">
-      <h2 id="victory-text">Monster Defeated!</h2>
-      <p id="victory-reward"></p>
-      <div id="victory-buttons">
-        <button id="next-btn" class="btn">Fight Again</button>
-        <button id="next-area-btn" class="btn btn-secondary">Next Area</button>
-      </div>
-    </div>
-
-    <!-- Shop Screen -->
-    <div id="shop-screen" class="screen">
-      <h2>Shop</h2>
-      <div id="shop-gold">Gold: <span id="shop-gold-amount">0</span></div>
-      <div id="shop-equipment">
-        <h3>Equipped</h3>
-        <div id="equipped-list"></div>
-      </div>
-      <div id="shop-items"></div>
-      <button id="shop-leave-btn" class="btn">Enter Area <span id="shop-next-area"></span></button>
-    </div>
-
-    <!-- Game Over Screen -->
-    <div id="gameover-screen" class="screen">
-      <h2>You Have Fallen</h2>
-      <p id="gameover-text"></p>
-      <button id="retry-btn" class="btn">Try Again</button>
     </div>
   </div>
 
-  <script src="monsters.js"></script>
-  <script src="items.js"></script>
-  <script src="story.js"></script>
-  <script src="game.js"></script>
+  <script>
+    // Draw a mini preview of a monster on the Sword & Monsters card
+    const banner = document.getElementById('banner-sword');
+    banner.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
+
+    // Draw three small monsters as a preview
+    const monsters = [
+      { x: 80, y: 60, color: '#4ecca3', type: 'slime' },
+      { x: 250, y: 55, color: '#e94560', type: 'skull' },
+      { x: 400, y: 60, color: '#f44336', type: 'dragon' },
+    ];
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 500;
+    canvas.height = 120;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    banner.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    // Slime
+    ctx.fillStyle = '#4ecca3';
+    ctx.beginPath();
+    ctx.ellipse(80, 70, 30, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.arc(72, 66, 3, 0, Math.PI * 2);
+    ctx.arc(88, 66, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Skeleton skull
+    ctx.fillStyle = '#e0d8c0';
+    ctx.beginPath();
+    ctx.arc(250, 55, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a2e';
+    ctx.beginPath();
+    ctx.arc(244, 52, 5, 0, Math.PI * 2);
+    ctx.arc(256, 52, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e94560';
+    ctx.beginPath();
+    ctx.arc(244, 52, 2.5, 0, Math.PI * 2);
+    ctx.arc(256, 52, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(240, 70, 20, 8);
+
+    // Dragon head
+    ctx.fillStyle = '#f44336';
+    ctx.beginPath();
+    ctx.ellipse(400, 58, 20, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#8d6e63';
+    ctx.beginPath();
+    ctx.moveTo(386, 44);
+    ctx.lineTo(382, 30);
+    ctx.lineTo(392, 44);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(414, 44);
+    ctx.lineTo(418, 30);
+    ctx.lineTo(408, 44);
+    ctx.fill();
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath();
+    ctx.ellipse(394, 54, 4, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(406, 54, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crossed swords in center
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(150, 30);
+    ctx.lineTo(180, 90);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(180, 30);
+    ctx.lineTo(150, 90);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(320, 30);
+    ctx.lineTo(350, 90);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(350, 30);
+    ctx.lineTo(320, 90);
+    ctx.stroke();
+  </script>
 </body>
 </html>

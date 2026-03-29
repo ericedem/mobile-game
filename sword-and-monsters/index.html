@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sword & Monsters</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game">
+    <!-- Title Screen -->
+    <div id="title-screen" class="screen active">
+      <h1>Sword &amp; Monsters</h1>
+      <p class="subtitle">Defeat the horde. How far can you go?</p>
+      <button id="start-btn" class="btn">Draw Your Sword</button>
+    </div>
+
+    <!-- Story Screen -->
+    <div id="story-screen" class="screen">
+      <div id="story-content">
+        <h2 id="story-title"></h2>
+        <div id="story-text"></div>
+      </div>
+      <button id="story-continue-btn" class="btn">Continue</button>
+    </div>
+
+    <!-- Battle Screen -->
+    <div id="battle-screen" class="screen">
+      <div id="hud">
+        <div id="player-hud">
+          <span id="player-name">Hero Lv.1</span>
+          <div class="bar-container">
+            <div id="player-hp-bar" class="bar hp-bar"></div>
+          </div>
+          <span id="player-hp-text" class="bar-text"></span>
+          <div class="bar-container xp-bar-container">
+            <div id="player-xp-bar" class="bar xp-bar"></div>
+          </div>
+          <span id="player-xp-text" class="bar-text"></span>
+        </div>
+        <div id="level-display">
+          <div id="area-num"></div>
+          <div id="gold-display">0g</div>
+        </div>
+        <div id="monster-hud">
+          <span id="monster-name"></span>
+          <div class="bar-container">
+            <div id="monster-hp-bar" class="bar hp-bar enemy"></div>
+          </div>
+          <span id="monster-hp-text" class="bar-text"></span>
+        </div>
+      </div>
+
+      <div id="arena">
+        <div id="monster-container">
+          <canvas id="monster-canvas" width="200" height="200"></canvas>
+        </div>
+        <div id="damage-flash"></div>
+        <div id="slash-effect"></div>
+      </div>
+
+      <div id="battle-log"></div>
+
+      <div id="controls">
+        <button id="attack-btn" class="btn attack-btn">Attack</button>
+        <button id="heal-btn" class="btn heal-btn">Heal <span id="heal-count"></span></button>
+      </div>
+    </div>
+
+    <!-- Victory Screen (per monster) -->
+    <div id="victory-screen" class="screen">
+      <h2 id="victory-text">Monster Defeated!</h2>
+      <p id="victory-reward"></p>
+      <div id="victory-buttons">
+        <button id="next-btn" class="btn">Fight Again</button>
+        <button id="next-area-btn" class="btn btn-secondary">Next Area</button>
+      </div>
+    </div>
+
+    <!-- Shop Screen -->
+    <div id="shop-screen" class="screen">
+      <h2>Shop</h2>
+      <div id="shop-gold">Gold: <span id="shop-gold-amount">0</span></div>
+      <div id="shop-equipment">
+        <h3>Equipped</h3>
+        <div id="equipped-list"></div>
+      </div>
+      <div id="shop-items"></div>
+      <button id="shop-leave-btn" class="btn">Enter Area <span id="shop-next-area"></span></button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen">
+      <h2>You Have Fallen</h2>
+      <p id="gameover-text"></p>
+      <button id="retry-btn" class="btn">Try Again</button>
+    </div>
+  </div>
+
+  <script src="monsters.js"></script>
+  <script src="items.js"></script>
+  <script src="story.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
