@@ -8,12 +8,12 @@ const RESOURCES = {
   copper_bar: { name: 'Copper Bar', color: '#d4884a', perClick: 0 },
 };
 
-// Explore options — what the player can search for
+// Explore options — timed searches that yield mineable deposits
 const EXPLORE_OPTIONS = [
-  { id: 'stone',      name: 'Search for Stone',      chance: 0.8 },
-  { id: 'coal',       name: 'Search for Coal',        chance: 0.6 },
-  { id: 'iron_ore',   name: 'Search for Iron',        chance: 0.5 },
-  { id: 'copper_ore', name: 'Search for Copper',      chance: 0.5 },
+  { id: 'stone',      name: 'Search for Stone',  time: 2000,  yield: [5, 10] },
+  { id: 'coal',       name: 'Search for Coal',   time: 3000,  yield: [4, 8]  },
+  { id: 'iron_ore',   name: 'Search for Iron',   time: 4000,  yield: [3, 6]  },
+  { id: 'copper_ore', name: 'Search for Copper',  time: 4000,  yield: [3, 6]  },
 ];
 
 // Craftable structures
@@ -36,15 +36,21 @@ const SMELT_RECIPES = [
 // Game state
 const state = {
   resources: {},       // resource_id: count
-  discovered: {},      // resource_id: true/false
+  deposits: {},        // resource_id: amount available to mine
+  discovered: {},      // resource_id: true/false (ever found)
   structures: {},      // structure_id: count
   furnaces: [],        // array of { active, recipe, startTime, duration }
+  searches: {},        // resource_id: { active, startTime, duration } — active search timers
 };
 
-// Initialize resources to 0
+// Initialize
 for (const id of Object.keys(RESOURCES)) {
   state.resources[id] = 0;
+  state.deposits[id] = 0;
   state.discovered[id] = false;
+}
+for (const opt of EXPLORE_OPTIONS) {
+  state.searches[opt.id] = { active: false, startTime: 0, duration: 0 };
 }
 
 // DOM refs
@@ -68,7 +74,6 @@ function showMessage(text, type = '') {
   el.textContent = text;
   dom.messageLog.appendChild(el);
   setTimeout(() => el.remove(), 2400);
-  // Keep max 3 messages
   while (dom.messageLog.children.length > 3) {
     dom.messageLog.removeChild(dom.messageLog.firstChild);
   }
@@ -94,53 +99,136 @@ function renderResources() {
     anyDiscovered = true;
     const badge = document.createElement('div');
     badge.className = 'resource-badge';
+    const depositInfo = def.perClick > 0 ? `<span class="resource-deposit" id="res-deposit-${id}">${state.deposits[id]} in deposit</span>` : '';
     badge.innerHTML = `
       <div class="resource-icon" style="background:${def.color}"></div>
-      <span class="resource-name">${def.name}</span>
+      <div class="resource-info">
+        <span class="resource-name">${def.name}</span>
+        ${depositInfo}
+      </div>
       <span class="resource-count" id="res-count-${id}">${state.resources[id]}</span>
     `;
     dom.resourcesList.appendChild(badge);
   }
   if (!anyDiscovered) {
-    dom.resourcesList.innerHTML = '<span style="color:#555;font-size:0.85rem;">No resources discovered yet. Explore to find some!</span>';
+    dom.resourcesList.innerHTML = '<span style="color:#555;font-size:0.85rem;">No resources discovered yet. Search to find some!</span>';
   }
 }
 
 function updateResourceCount(id) {
   const el = document.getElementById(`res-count-${id}`);
   if (el) el.textContent = state.resources[id];
+  const depEl = document.getElementById(`res-deposit-${id}`);
+  if (depEl) depEl.textContent = `${state.deposits[id]} in deposit`;
 }
 
-// --- Render explore buttons ---
+// ========== EXPLORE SYSTEM ==========
+
 function renderExplore() {
   dom.exploreButtons.innerHTML = '';
-  let anyToExplore = false;
   for (const opt of EXPLORE_OPTIONS) {
-    if (state.discovered[opt.id]) continue;
-    anyToExplore = true;
+    const search = state.searches[opt.id];
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'explore-wrapper';
+    wrapper.id = `explore-wrapper-${opt.id}`;
+
     const btn = document.createElement('button');
     btn.className = 'game-btn explore-btn';
-    btn.innerHTML = `<span class="btn-label">${opt.name}</span>`;
-    btn.addEventListener('click', () => explore(opt));
-    dom.exploreButtons.appendChild(btn);
-  }
-  if (!anyToExplore) {
-    dom.exploreButtons.innerHTML = '<span style="color:#555;font-size:0.85rem;">All resources discovered!</span>';
+    btn.id = `explore-btn-${opt.id}`;
+    btn.disabled = search.active;
+    btn.innerHTML = `
+      <span class="btn-label">${opt.name}</span>
+      <span class="btn-cost">${(opt.time / 1000).toFixed(0)}s search</span>
+    `;
+    btn.addEventListener('click', () => startSearch(opt));
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container explore-bar-container';
+    barContainer.id = `explore-bar-container-${opt.id}`;
+    barContainer.style.display = search.active ? 'block' : 'none';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar explore-bar';
+    bar.id = `explore-bar-${opt.id}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+    wrapper.appendChild(btn);
+    wrapper.appendChild(barContainer);
+    dom.exploreButtons.appendChild(wrapper);
   }
 }
 
-// --- Explore action ---
-function explore(opt) {
-  if (Math.random() < opt.chance) {
-    state.discovered[opt.id] = true;
-    showMessage(`Discovered a ${RESOURCES[opt.id].name} deposit!`, 'discover');
-    renderAll();
+function startSearch(opt) {
+  const search = state.searches[opt.id];
+  if (search.active) return;
+
+  search.active = true;
+  search.startTime = Date.now();
+  search.duration = opt.time;
+
+  // Disable button, show progress bar
+  const btn = document.getElementById(`explore-btn-${opt.id}`);
+  if (btn) btn.disabled = true;
+  const barContainer = document.getElementById(`explore-bar-container-${opt.id}`);
+  if (barContainer) barContainer.style.display = 'block';
+
+  if (!searchTickRunning) {
+    searchTickRunning = true;
+    requestAnimationFrame(searchTick);
+  }
+}
+
+let searchTickRunning = false;
+
+function searchTick() {
+  let anyActive = false;
+
+  for (const opt of EXPLORE_OPTIONS) {
+    const search = state.searches[opt.id];
+    if (!search.active) continue;
+
+    const elapsed = Date.now() - search.startTime;
+    const pct = Math.min(100, (elapsed / search.duration) * 100);
+
+    const bar = document.getElementById(`explore-bar-${opt.id}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= search.duration) {
+      // Search complete — add to deposits
+      const [minYield, maxYield] = opt.yield;
+      const amount = minYield + Math.floor(Math.random() * (maxYield - minYield + 1));
+      state.deposits[opt.id] += amount;
+      state.discovered[opt.id] = true;
+
+      search.active = false;
+      showMessage(`Found ${amount} ${RESOURCES[opt.id].name}!`, 'discover');
+
+      // Reset bar
+      if (bar) bar.style.width = '0%';
+      const barContainer = document.getElementById(`explore-bar-container-${opt.id}`);
+      if (barContainer) barContainer.style.display = 'none';
+      const btn = document.getElementById(`explore-btn-${opt.id}`);
+      if (btn) btn.disabled = false;
+
+      renderResources();
+      renderMine();
+      renderCraft();
+    } else {
+      anyActive = true;
+    }
+  }
+
+  if (anyActive) {
+    requestAnimationFrame(searchTick);
   } else {
-    showMessage(`Searched but found nothing... try again.`, 'fail');
+    searchTickRunning = false;
   }
 }
 
-// --- Render mine buttons ---
+// ========== MINE SYSTEM ==========
+
 function renderMine() {
   const mineable = Object.entries(RESOURCES).filter(([id, def]) =>
     state.discovered[id] && def.perClick > 0
@@ -156,10 +244,12 @@ function renderMine() {
   for (const [id, def] of mineable) {
     const btn = document.createElement('button');
     btn.className = 'game-btn mine-btn';
+    btn.id = `mine-btn-${id}`;
+    btn.disabled = state.deposits[id] <= 0;
     btn.innerHTML = `
       <div class="btn-icon" style="background:${def.color}"></div>
-      <span class="btn-label">${def.name}</span>
-      <span class="btn-cost">+${def.perClick} per tap</span>
+      <span class="btn-label">Mine ${def.name}</span>
+      <span class="btn-cost">${state.deposits[id]} remaining</span>
       <div class="mine-flash"></div>
     `;
     btn.addEventListener('click', (e) => mine(id, def, e));
@@ -167,25 +257,35 @@ function renderMine() {
   }
 }
 
-// --- Mine action ---
 function mine(id, def, event) {
+  if (state.deposits[id] <= 0) return;
+
+  state.deposits[id] -= def.perClick;
   state.resources[id] += def.perClick;
   updateResourceCount(id);
   updateCraftButtons();
   updateSmeltButtons();
+
+  // Update mine button
+  const btn = document.getElementById(`mine-btn-${id}`);
+  if (btn) {
+    const costSpan = btn.querySelector('.btn-cost');
+    if (costSpan) costSpan.textContent = `${state.deposits[id]} remaining`;
+    btn.disabled = state.deposits[id] <= 0;
+  }
 
   // Float number
   const rect = event.currentTarget.getBoundingClientRect();
   showFloat(`+${def.perClick}`, rect.left + rect.width / 2 - 10, rect.top - 10);
 }
 
-// --- Render craft buttons ---
+// ========== CRAFT SYSTEM ==========
+
 function renderCraft() {
   let anyVisible = false;
 
   dom.craftButtons.innerHTML = '';
   for (const craft of CRAFTS) {
-    // Only show if the unlock resource is discovered
     if (craft.unlockRequires && !state.discovered[craft.unlockRequires]) continue;
     anyVisible = true;
 
@@ -225,7 +325,6 @@ function buildCraft(craft) {
     state.resources[r] -= n;
   }
   state.structures[craft.id] = (state.structures[craft.id] || 0) + 1;
-  // Add a new furnace slot
   if (craft.id === 'furnace') {
     state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0 });
   }
@@ -245,14 +344,23 @@ function updateCraftButtons() {
   }
 }
 
-// --- Render smelt panel ---
+// ========== SMELT SYSTEM ==========
+
 function renderSmelt() {
   if (!state.structures.furnace) {
     dom.smeltPanel.classList.add('hidden');
     return;
   }
   dom.smeltPanel.classList.remove('hidden');
+
+  renderSmeltButtons();
+  renderFurnaceSlots();
+}
+
+function renderSmeltButtons() {
   dom.smeltButtons.innerHTML = '';
+
+  const idle = getIdleFurnaceCount();
 
   for (const recipe of SMELT_RECIPES) {
     const inputResources = Object.keys(recipe.input);
@@ -269,21 +377,26 @@ function renderSmelt() {
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
       <span class="btn-label">${recipe.name}</span>
       <span class="btn-cost">${costText}</span>
+      <span class="btn-cost">${idle} furnace${idle !== 1 ? 's' : ''} available</span>
     `;
-    btn.disabled = !canAfford(recipe.input) || getIdleFurnaceCount() === 0;
+    btn.disabled = !canAfford(recipe.input) || idle === 0;
     btn.addEventListener('click', () => startSmelt(recipe));
     dom.smeltButtons.appendChild(btn);
   }
-
-  renderFurnaceSlots();
 }
 
 function updateSmeltButtons() {
+  const idle = getIdleFurnaceCount();
   const buttons = dom.smeltButtons.querySelectorAll('.smelt-btn');
   buttons.forEach(btn => {
     const recipe = SMELT_RECIPES.find(r => r.id === btn.dataset.recipeId);
     if (recipe) {
-      btn.disabled = !canAfford(recipe.input) || getIdleFurnaceCount() === 0;
+      btn.disabled = !canAfford(recipe.input) || idle === 0;
+      // Update availability text
+      const costSpans = btn.querySelectorAll('.btn-cost');
+      if (costSpans.length >= 2) {
+        costSpans[1].textContent = `${idle} furnace${idle !== 1 ? 's' : ''} available`;
+      }
     }
   });
 }
@@ -333,7 +446,6 @@ function renderFurnaceSlots() {
 
 // --- Smelting ---
 function startSmelt(recipe) {
-  // Find an idle furnace
   const furnaceIndex = state.furnaces.findIndex(f => !f.active);
   if (furnaceIndex === -1) return;
   if (!canAfford(recipe.input)) return;
@@ -359,14 +471,12 @@ function startSmelt(recipe) {
   const statusEl = document.getElementById(`furnace-status-${furnaceIndex}`);
   if (statusEl) statusEl.textContent = `Smelting ${RESOURCES[recipe.output].name}...`;
 
-  // Start tick loop if not already running
   if (!furnaceTickRunning) {
     furnaceTickRunning = true;
     requestAnimationFrame(furnaceTick);
   }
 }
 
-// Single animation loop that updates all furnaces
 let furnaceTickRunning = false;
 
 function furnaceTick() {
@@ -383,7 +493,6 @@ function furnaceTick() {
     if (bar) bar.style.width = pct + '%';
 
     if (elapsed >= f.duration) {
-      // Done smelting
       state.resources[f.recipe.output] += 1;
       state.discovered[f.recipe.output] = true;
 
@@ -412,7 +521,8 @@ function furnaceTick() {
   }
 }
 
-// --- Render all ---
+// ========== RENDER ALL ==========
+
 function renderAll() {
   renderResources();
   renderExplore();

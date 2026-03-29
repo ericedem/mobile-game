@@ -92,9 +92,20 @@ h2 {
   flex-shrink: 0;
 }
 
+.resource-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .resource-name {
   font-size: 0.75rem;
   color: #888;
+}
+
+.resource-deposit {
+  font-size: 0.6rem;
+  color: #555;
 }
 
 .resource-count {
@@ -161,12 +172,31 @@ h2 {
 }
 
 /* Explore buttons */
+.explore-wrapper {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .explore-btn {
   border-color: #3a3b5e;
+  width: 100%;
 }
 
 .explore-btn:active {
   border-color: #5a5b8e;
+}
+
+.explore-bar-container {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.explore-bar {
+  background: linear-gradient(to right, #536dfe, #7c4dff);
+  border-radius: 2px;
 }
 
 /* Mine buttons */
