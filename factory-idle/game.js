@@ -38,12 +38,7 @@ const state = {
   resources: {},       // resource_id: count
   discovered: {},      // resource_id: true/false
   structures: {},      // structure_id: count
-  furnace: {
-    active: false,
-    recipe: null,
-    startTime: 0,
-    duration: 0,
-  },
+  furnaces: [],        // array of { active, recipe, startTime, duration }
 };
 
 // Initialize resources to 0
@@ -62,9 +57,7 @@ const dom = {
   craftButtons: document.getElementById('craft-buttons'),
   smeltPanel: document.getElementById('smelt-panel'),
   smeltButtons: document.getElementById('smelt-buttons'),
-  furnaceStatus: document.getElementById('furnace-status'),
-  furnaceProgressBar: document.getElementById('furnace-progress-bar'),
-  furnaceStatusText: document.getElementById('furnace-status-text'),
+  furnaceSlots: document.getElementById('furnace-slots'),
   messageLog: document.getElementById('message-log'),
 };
 
@@ -232,7 +225,11 @@ function buildCraft(craft) {
     state.resources[r] -= n;
   }
   state.structures[craft.id] = (state.structures[craft.id] || 0) + 1;
-  showMessage(`Built ${craft.name}!`, 'success');
+  // Add a new furnace slot
+  if (craft.id === 'furnace') {
+    state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0 });
+  }
+  showMessage(`Built ${craft.name}! (${state.structures[craft.id]} total)`, 'success');
   renderAll();
 }
 
@@ -258,7 +255,6 @@ function renderSmelt() {
   dom.smeltButtons.innerHTML = '';
 
   for (const recipe of SMELT_RECIPES) {
-    // Only show recipes for discovered ores
     const inputResources = Object.keys(recipe.input);
     const allDiscovered = inputResources.every(r => state.discovered[r]);
     if (!allDiscovered) continue;
@@ -274,10 +270,12 @@ function renderSmelt() {
       <span class="btn-label">${recipe.name}</span>
       <span class="btn-cost">${costText}</span>
     `;
-    btn.disabled = !canAfford(recipe.input) || state.furnace.active;
+    btn.disabled = !canAfford(recipe.input) || getIdleFurnaceCount() === 0;
     btn.addEventListener('click', () => startSmelt(recipe));
     dom.smeltButtons.appendChild(btn);
   }
+
+  renderFurnaceSlots();
 }
 
 function updateSmeltButtons() {
@@ -285,64 +283,133 @@ function updateSmeltButtons() {
   buttons.forEach(btn => {
     const recipe = SMELT_RECIPES.find(r => r.id === btn.dataset.recipeId);
     if (recipe) {
-      btn.disabled = !canAfford(recipe.input) || state.furnace.active;
+      btn.disabled = !canAfford(recipe.input) || getIdleFurnaceCount() === 0;
     }
   });
 }
 
+function getIdleFurnaceCount() {
+  return state.furnaces.filter(f => !f.active).length;
+}
+
+// --- Furnace slots display ---
+function renderFurnaceSlots() {
+  dom.furnaceSlots.innerHTML = '';
+  for (let i = 0; i < state.furnaces.length; i++) {
+    const f = state.furnaces[i];
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot' + (f.active ? ' active' : '');
+    slot.id = `furnace-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `Furnace ${i + 1}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `furnace-status-${i}`;
+    statusText.textContent = f.active ? `Smelting ${RESOURCES[f.recipe.output].name}...` : 'Idle';
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.id = `furnace-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.furnaceSlots.appendChild(slot);
+  }
+}
+
 // --- Smelting ---
 function startSmelt(recipe) {
-  if (state.furnace.active) return;
+  // Find an idle furnace
+  const furnaceIndex = state.furnaces.findIndex(f => !f.active);
+  if (furnaceIndex === -1) return;
   if (!canAfford(recipe.input)) return;
 
   // Consume inputs
   for (const [r, n] of Object.entries(recipe.input)) {
     state.resources[r] -= n;
   }
+
+  const furnace = state.furnaces[furnaceIndex];
+  furnace.active = true;
+  furnace.recipe = recipe;
+  furnace.startTime = Date.now();
+  furnace.duration = recipe.time;
+
   renderResources();
   updateCraftButtons();
   updateSmeltButtons();
 
-  state.furnace.active = true;
-  state.furnace.recipe = recipe;
-  state.furnace.startTime = Date.now();
-  state.furnace.duration = recipe.time;
+  // Update slot UI
+  const slot = document.getElementById(`furnace-slot-${furnaceIndex}`);
+  if (slot) slot.classList.add('active');
+  const statusEl = document.getElementById(`furnace-status-${furnaceIndex}`);
+  if (statusEl) statusEl.textContent = `Smelting ${RESOURCES[recipe.output].name}...`;
 
-  dom.furnaceStatus.classList.remove('hidden');
-  dom.furnaceStatusText.textContent = `Smelting ${RESOURCES[recipe.output].name}...`;
-
-  // Disable smelt buttons while active
-  dom.smeltButtons.querySelectorAll('.smelt-btn').forEach(b => b.disabled = true);
-
-  updateFurnaceProgress();
+  // Start tick loop if not already running
+  if (!furnaceTickRunning) {
+    furnaceTickRunning = true;
+    requestAnimationFrame(furnaceTick);
+  }
 }
 
-function updateFurnaceProgress() {
-  if (!state.furnace.active) return;
+// Single animation loop that updates all furnaces
+let furnaceTickRunning = false;
 
-  const elapsed = Date.now() - state.furnace.startTime;
-  const pct = Math.min(100, (elapsed / state.furnace.duration) * 100);
-  dom.furnaceProgressBar.style.width = pct + '%';
+function furnaceTick() {
+  let anyActive = false;
 
-  if (elapsed >= state.furnace.duration) {
-    // Done
-    const recipe = state.furnace.recipe;
-    state.resources[recipe.output] += 1;
-    state.discovered[recipe.output] = true;
+  for (let i = 0; i < state.furnaces.length; i++) {
+    const f = state.furnaces[i];
+    if (!f.active) continue;
 
-    state.furnace.active = false;
-    state.furnace.recipe = null;
+    const elapsed = Date.now() - f.startTime;
+    const pct = Math.min(100, (elapsed / f.duration) * 100);
 
-    showMessage(`Smelted 1 ${RESOURCES[recipe.output].name}!`, 'success');
-    dom.furnaceStatusText.textContent = 'Idle';
-    dom.furnaceProgressBar.style.width = '0%';
+    const bar = document.getElementById(`furnace-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
 
-    renderResources();
-    updateSmeltButtons();
-    return;
+    if (elapsed >= f.duration) {
+      // Done smelting
+      state.resources[f.recipe.output] += 1;
+      state.discovered[f.recipe.output] = true;
+
+      showMessage(`Furnace ${i + 1}: Smelted 1 ${RESOURCES[f.recipe.output].name}!`, 'success');
+
+      f.active = false;
+      f.recipe = null;
+
+      if (bar) bar.style.width = '0%';
+      const slot = document.getElementById(`furnace-slot-${i}`);
+      if (slot) slot.classList.remove('active');
+      const statusEl = document.getElementById(`furnace-status-${i}`);
+      if (statusEl) statusEl.textContent = 'Idle';
+
+      renderResources();
+      updateSmeltButtons();
+    } else {
+      anyActive = true;
+    }
   }
 
-  requestAnimationFrame(updateFurnaceProgress);
+  if (anyActive) {
+    requestAnimationFrame(furnaceTick);
+  } else {
+    furnaceTickRunning = false;
+  }
 }
 
 // --- Render all ---
