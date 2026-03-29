@@ -1,0 +1,360 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  height: 100dvh;
+  width: 100vw;
+}
+
+#game {
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 500px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Screens */
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 20px;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* Title */
+#title-screen h1 {
+  font-size: 2.5rem;
+  color: #e94560;
+  text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  color: #888;
+  margin-bottom: 40px;
+  font-size: 1.1rem;
+}
+
+/* Buttons */
+.btn {
+  background: #e94560;
+  color: white;
+  border: none;
+  padding: 16px 40px;
+  font-size: 1.2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.1s, background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active {
+  transform: scale(0.95);
+}
+
+.btn:disabled {
+  background: #555;
+  cursor: default;
+  transform: none;
+}
+
+/* HUD */
+#hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 16px 8px;
+  width: 100%;
+  gap: 8px;
+}
+
+#player-hud, #monster-hud {
+  flex: 1;
+}
+
+#monster-hud {
+  text-align: right;
+}
+
+#player-hud span:first-child,
+#monster-hud span:first-child {
+  font-weight: bold;
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+#level-display {
+  font-size: 0.8rem;
+  color: #e94560;
+  font-weight: bold;
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.bar-container {
+  width: 100%;
+  height: 14px;
+  background: #333;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.3s ease;
+}
+
+.hp-bar {
+  background: linear-gradient(to right, #4ecca3, #45b393);
+  width: 100%;
+}
+
+.hp-bar.enemy {
+  background: linear-gradient(to left, #e94560, #c73652);
+  float: right;
+}
+
+.hp-bar.low {
+  background: linear-gradient(to right, #e94560, #c73652) !important;
+}
+
+.bar-text {
+  font-size: 0.7rem;
+  color: #999;
+  display: block;
+  margin-top: 2px;
+}
+
+#monster-hud .bar-text {
+  text-align: right;
+}
+
+/* Arena */
+#arena {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+  min-height: 0;
+}
+
+#monster-container {
+  position: relative;
+  z-index: 1;
+}
+
+#monster-canvas {
+  image-rendering: pixelated;
+  width: 200px;
+  height: 200px;
+  transition: transform 0.1s;
+}
+
+#monster-container.hit {
+  animation: monsterHit 0.3s ease;
+}
+
+#monster-container.dying {
+  animation: monsterDie 0.6s ease forwards;
+}
+
+@keyframes monsterHit {
+  0% { transform: translate(0, 0); filter: brightness(2); }
+  25% { transform: translate(-8px, 0); filter: brightness(2); }
+  50% { transform: translate(8px, 0); filter: brightness(1.5); }
+  75% { transform: translate(-4px, 0); filter: brightness(1); }
+  100% { transform: translate(0, 0); filter: brightness(1); }
+}
+
+@keyframes monsterDie {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  30% { transform: scale(1.1); opacity: 1; filter: brightness(3); }
+  100% { transform: scale(0); opacity: 0; filter: brightness(3); }
+}
+
+/* Damage flash overlay */
+#damage-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(233, 69, 96, 0);
+  pointer-events: none;
+  transition: background 0.1s;
+  z-index: 5;
+}
+
+#damage-flash.flash {
+  animation: damageFlash 0.3s ease;
+}
+
+@keyframes damageFlash {
+  0% { background: rgba(233, 69, 96, 0.3); }
+  100% { background: rgba(233, 69, 96, 0); }
+}
+
+/* Slash effect */
+#slash-effect {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+}
+
+#slash-effect.active {
+  animation: slashAnim 0.3s ease forwards;
+}
+
+@keyframes slashAnim {
+  0% {
+    opacity: 1;
+    transform: rotate(-45deg) scale(0.5);
+    border-right: 4px solid rgba(255, 255, 255, 0.9);
+  }
+  50% {
+    opacity: 0.8;
+    transform: rotate(0deg) scale(1.2);
+    border-right: 3px solid rgba(255, 255, 255, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(30deg) scale(1.5);
+    border-right: 1px solid rgba(255, 255, 255, 0);
+  }
+}
+
+/* Battle Log */
+#battle-log {
+  width: 100%;
+  height: 80px;
+  padding: 8px 16px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  color: #aaa;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+#battle-log .log-entry {
+  margin-bottom: 3px;
+  animation: fadeIn 0.2s ease;
+}
+
+#battle-log .log-damage { color: #e94560; }
+#battle-log .log-heal { color: #4ecca3; }
+#battle-log .log-info { color: #c4a35a; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Controls */
+#controls {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  width: 100%;
+}
+
+.attack-btn {
+  flex: 2;
+  font-size: 1.3rem;
+  padding: 20px;
+}
+
+.heal-btn {
+  flex: 1;
+  background: #4ecca3;
+  font-size: 1rem;
+  padding: 20px 16px;
+}
+
+/* Victory / Game Over */
+#victory-screen h2, #gameover-screen h2 {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+#victory-screen h2 {
+  color: #4ecca3;
+}
+
+#gameover-screen h2 {
+  color: #e94560;
+}
+
+#victory-reward, #gameover-text {
+  color: #999;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* Battle screen layout */
+#battle-screen {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+#battle-screen.active {
+  display: flex;
+}
+
+/* Floating damage numbers */
+.damage-number {
+  position: absolute;
+  font-weight: bold;
+  font-size: 1.5rem;
+  pointer-events: none;
+  z-index: 20;
+  animation: floatUp 0.8s ease forwards;
+}
+
+.damage-number.player-dmg {
+  color: #e94560;
+}
+
+.damage-number.heal-num {
+  color: #4ecca3;
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  60% { opacity: 1; transform: translateY(-40px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+}

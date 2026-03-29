@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Sword & Monsters</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game">
+    <!-- Title Screen -->
+    <div id="title-screen" class="screen active">
+      <h1>Sword &amp; Monsters</h1>
+      <p class="subtitle">Defeat the horde. How far can you go?</p>
+      <button id="start-btn" class="btn">Draw Your Sword</button>
+    </div>
+
+    <!-- Battle Screen -->
+    <div id="battle-screen" class="screen">
+      <div id="hud">
+        <div id="player-hud">
+          <span id="player-name">Hero</span>
+          <div class="bar-container">
+            <div id="player-hp-bar" class="bar hp-bar"></div>
+          </div>
+          <span id="player-hp-text" class="bar-text"></span>
+        </div>
+        <div id="level-display">Floor <span id="floor-num">1</span></div>
+        <div id="monster-hud">
+          <span id="monster-name"></span>
+          <div class="bar-container">
+            <div id="monster-hp-bar" class="bar hp-bar enemy"></div>
+          </div>
+          <span id="monster-hp-text" class="bar-text"></span>
+        </div>
+      </div>
+
+      <div id="arena">
+        <div id="monster-container">
+          <canvas id="monster-canvas" width="200" height="200"></canvas>
+        </div>
+        <div id="damage-flash"></div>
+        <div id="slash-effect"></div>
+      </div>
+
+      <div id="battle-log"></div>
+
+      <div id="controls">
+        <button id="attack-btn" class="btn attack-btn">Attack</button>
+        <button id="heal-btn" class="btn heal-btn">Heal <span id="heal-count"></span></button>
+      </div>
+    </div>
+
+    <!-- Victory Screen (per monster) -->
+    <div id="victory-screen" class="screen">
+      <h2 id="victory-text">Monster Defeated!</h2>
+      <p id="victory-reward"></p>
+      <button id="next-btn" class="btn">Continue Deeper</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen">
+      <h2>You Have Fallen</h2>
+      <p id="gameover-text"></p>
+      <button id="retry-btn" class="btn">Try Again</button>
+    </div>
+  </div>
+
+  <script src="monsters.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
