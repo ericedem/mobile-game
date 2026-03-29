@@ -164,6 +164,14 @@ h2 {
   color: #888;
 }
 
+.cost-ok {
+  color: #7ec860;
+}
+
+.cost-missing {
+  color: #e06060;
+}
+
 .game-btn .btn-icon {
   width: 10px;
   height: 10px;

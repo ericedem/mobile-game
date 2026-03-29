@@ -325,13 +325,10 @@ function renderCraft() {
 
     const btn = document.createElement('button');
     btn.className = 'game-btn craft-btn';
-    const costText = Object.entries(craft.cost)
-      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
-      .join(', ');
     const owned = state.structures[craft.id] || 0;
     btn.innerHTML = `
       <span class="btn-label">${craft.name}</span>
-      <span class="btn-cost">${costText}</span>
+      <span class="btn-cost">${formatCost(craft.cost)}</span>
       ${owned > 0 ? `<span class="btn-cost">Owned: ${owned}</span>` : ''}
     `;
     btn.disabled = !canAfford(craft.cost);
@@ -351,6 +348,17 @@ function canAfford(cost) {
     if ((state.resources[r] || 0) < n) return false;
   }
   return true;
+}
+
+// Format cost with red/green per-resource coloring
+function formatCost(cost, separator) {
+  return Object.entries(cost)
+    .map(([r, n]) => {
+      const have = state.resources[r] || 0;
+      const cls = have >= n ? 'cost-ok' : 'cost-missing';
+      return `<span class="${cls}">${n} ${RESOURCES[r].name} (${have})</span>`;
+    })
+    .join(separator || ', ');
 }
 
 function buildCraft(craft) {
@@ -376,6 +384,8 @@ function updateCraftButtons() {
     if (craft.unlockRequires && !state.discovered[craft.unlockRequires]) continue;
     if (buttons[i]) {
       buttons[i].disabled = !canAfford(craft.cost);
+      const costSpan = buttons[i].querySelector('.btn-cost');
+      if (costSpan) costSpan.innerHTML = formatCost(craft.cost);
     }
     i++;
   }
@@ -407,13 +417,10 @@ function renderSmeltButtons() {
     const btn = document.createElement('button');
     btn.className = 'game-btn smelt-btn';
     btn.dataset.recipeId = recipe.id;
-    const costText = Object.entries(recipe.input)
-      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
-      .join(' + ');
     btn.innerHTML = `
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
       <span class="btn-label">${recipe.name}</span>
-      <span class="btn-cost">${costText}</span>
+      <span class="btn-cost">${formatCost(recipe.input, ' + ')}</span>
       <span class="btn-cost">${idle} furnace${idle !== 1 ? 's' : ''} available</span>
     `;
     btn.disabled = !canAfford(recipe.input) || idle === 0;
@@ -429,11 +436,9 @@ function updateSmeltButtons() {
     const recipe = SMELT_RECIPES.find(r => r.id === btn.dataset.recipeId);
     if (recipe) {
       btn.disabled = !canAfford(recipe.input) || idle === 0;
-      // Update availability text
       const costSpans = btn.querySelectorAll('.btn-cost');
-      if (costSpans.length >= 2) {
-        costSpans[1].textContent = `${idle} furnace${idle !== 1 ? 's' : ''} available`;
-      }
+      if (costSpans[0]) costSpans[0].innerHTML = formatCost(recipe.input, ' + ');
+      if (costSpans[1]) costSpans[1].textContent = `${idle} furnace${idle !== 1 ? 's' : ''} available`;
     }
   });
 }
@@ -574,13 +579,10 @@ function renderHandcraft() {
     const btn = document.createElement('button');
     btn.className = 'game-btn handcraft-btn';
     btn.dataset.recipeId = recipe.id;
-    const costText = Object.entries(recipe.input)
-      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
-      .join(' + ');
     btn.innerHTML = `
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
       <span class="btn-label">${recipe.name}</span>
-      <span class="btn-cost">${costText} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}</span>
+      <span class="btn-cost">${formatCost(recipe.input, ' + ')} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}</span>
     `;
     btn.disabled = !canAfford(recipe.input);
     btn.addEventListener('click', (e) => handcraft(recipe, e));
@@ -624,6 +626,8 @@ function updateHandcraftButtons() {
     const recipe = HANDCRAFT_RECIPES.find(r => r.id === btn.dataset.recipeId);
     if (recipe) {
       btn.disabled = !canAfford(recipe.input);
+      const costSpan = btn.querySelector('.btn-cost');
+      if (costSpan) costSpan.innerHTML = `${formatCost(recipe.input, ' + ')} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}`;
     }
   });
 }
@@ -653,13 +657,10 @@ function renderFactoryButtons() {
     const btn = document.createElement('button');
     btn.className = 'game-btn factory-recipe-btn';
     btn.dataset.recipeId = recipe.id;
-    const costText = Object.entries(recipe.input)
-      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
-      .join(' + ');
     btn.innerHTML = `
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
       <span class="btn-label">${recipe.name}</span>
-      <span class="btn-cost">${costText}</span>
+      <span class="btn-cost">${formatCost(recipe.input, ' + ')}</span>
       <span class="btn-cost">${idle} factor${idle !== 1 ? 'ies' : 'y'} available</span>
     `;
     btn.disabled = !canAfford(recipe.input) || idle === 0;
@@ -676,9 +677,8 @@ function updateFactoryButtons() {
     if (recipe) {
       btn.disabled = !canAfford(recipe.input) || idle === 0;
       const costSpans = btn.querySelectorAll('.btn-cost');
-      if (costSpans.length >= 2) {
-        costSpans[1].textContent = `${idle} factor${idle !== 1 ? 'ies' : 'y'} available`;
-      }
+      if (costSpans[0]) costSpans[0].innerHTML = formatCost(recipe.input, ' + ');
+      if (costSpans[1]) costSpans[1].textContent = `${idle} factor${idle !== 1 ? 'ies' : 'y'} available`;
     }
   });
 }
