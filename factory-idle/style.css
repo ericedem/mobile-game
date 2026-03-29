@@ -59,7 +59,10 @@ h2 {
 #explore-panel,
 #mine-panel,
 #craft-panel,
-#smelt-panel {
+#smelt-panel,
+#factory-panel,
+#power-panel,
+#upgrade-panel {
   margin-bottom: 20px;
 }
 
@@ -118,7 +121,10 @@ h2 {
 #explore-buttons,
 #mine-buttons,
 #craft-buttons,
-#smelt-buttons {
+#smelt-buttons,
+#factory-buttons,
+#power-buttons,
+#upgrade-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -254,6 +260,38 @@ h2 {
 
 .factory-bar-fill {
   background: linear-gradient(to right, #4caf50, #2e7d32);
+}
+
+.power-btn {
+  border-color: #4a4a1e;
+}
+
+.power-bar-fill {
+  background: linear-gradient(to right, #ffeb3b, #f9a825);
+}
+
+.electric-bar-fill {
+  background: linear-gradient(to right, #42a5f5, #1565c0);
+}
+
+.upgrade-btn {
+  border-color: #1e3a4a;
+}
+
+.smelt-btn.electric,
+.factory-recipe-btn.electric {
+  border-color: #1e3a4a;
+}
+
+.furnace-slot.electric-slot {
+  border-color: #1e3a4a;
+}
+
+#power-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 /* Furnace slots */

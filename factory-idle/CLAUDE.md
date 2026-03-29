@@ -4,33 +4,63 @@ A resource management and factory automation game. Discover deposits, mine resou
 
 ## Files
 
-- `index.html` — Page structure: resource display, explore/mine/craft/smelt panels, message log
-- `game.js` — All game logic: resource definitions, explore/mine/craft/smelt systems, UI rendering
+- `index.html` — Page structure: resource display, explore/mine/craft/smelt/factory/power/upgrade panels, message log
+- `game.js` — All game logic: resource definitions, explore/mine/craft/smelt/factory/power/upgrade systems, UI rendering
 - `style.css` — Dark theme styling, button animations, float numbers, toast messages
 
 ## Game Flow
 
-1. **Explore** — Player taps "Search for X" buttons. Each has a % chance to discover a deposit
-2. **Mine** — Once discovered, tap resource buttons to collect (stone, coal, iron ore, copper ore)
-3. **Build** — Use stone to craft a Stone Furnace (unlocks when stone is discovered)
-4. **Smelt** — Furnace converts iron ore + coal → iron bar, copper ore + coal → copper bar (3s timer)
+1. **Explore** — Player taps "Search for X" buttons. Timed searches discover deposit pools
+2. **Mine** — Once discovered, tap resource buttons to collect from deposits (stone, coal, iron ore, copper ore)
+3. **Build** — Use resources to craft structures: Stone Furnace, Factory, Power Plant
+4. **Smelt** — Furnaces convert ores + coal → metal bars (3s timer)
+5. **Factory** — Factories produce copper wire and circuits using coal
+6. **Power** — Power plants convert coal → power units (4s timer)
+7. **Upgrade** — Retrofit furnaces/factories to electric versions (use power instead of coal, faster)
 
 ## Resources
 
-| Resource   | Color   | Mineable | Discover Chance |
-|-----------|---------|----------|----------------|
-| Stone      | #999    | Yes      | 80%            |
-| Coal       | #555    | Yes      | 60%            |
-| Iron Ore   | #b05030 | Yes      | 50%            |
-| Copper Ore | #c07040 | Yes      | 50%            |
-| Iron Bar   | #aab0b8 | No       | Via smelting   |
-| Copper Bar | #d4884a | No       | Via smelting   |
+| Resource     | Color   | Mineable | Source            |
+|-------------|---------|----------|-------------------|
+| Stone        | #999    | Yes      | Explore & mine    |
+| Coal         | #555    | Yes      | Explore & mine    |
+| Iron Ore     | #b05030 | Yes      | Explore & mine    |
+| Copper Ore   | #c07040 | Yes      | Explore & mine    |
+| Iron Bar     | #aab0b8 | No       | Smelting          |
+| Copper Bar   | #d4884a | No       | Smelting          |
+| Copper Wire  | #e09050 | No       | Factory           |
+| Circuit      | #4caf50 | No       | Factory           |
+| Power        | #ffeb3b | No       | Power Plant       |
 
-## Crafting
+## Building
 
 - **Stone Furnace**: 10 Stone — unlocks smelting panel
+- **Factory**: 15 Stone + 5 Iron Bar + 5 Copper Bar — unlocks factory panel
+- **Power Plant**: 5 Circuit + 10 Copper Wire + 5 Copper Bar + 5 Iron Bar — unlocks power panel
 
-## Smelting
+## Smelting (Furnaces)
 
 - **Iron Bar**: 1 Iron Ore + 1 Coal → 1 Iron Bar (3s)
 - **Copper Bar**: 1 Copper Ore + 1 Coal → 1 Copper Bar (3s)
+
+### Electric Furnace (upgraded)
+- **Iron Bar**: 1 Iron Ore + 1 Power → 1 Iron Bar (2s)
+- **Copper Bar**: 1 Copper Ore + 1 Power → 1 Copper Bar (2s)
+
+## Factory Recipes
+
+- **Copper Wire**: 1 Copper Bar → 1 Copper Wire (2s)
+- **Circuit**: 3 Copper Wire + 1 Iron Bar + 1 Coal → 1 Circuit (5s)
+
+### Electric Factory (upgraded)
+- **Copper Wire**: 1 Copper Bar → 1 Copper Wire (1.5s)
+- **Circuit**: 3 Copper Wire + 1 Iron Bar + 1 Power → 1 Circuit (3.5s)
+
+## Power Plant
+
+- **Generate Power**: 2 Coal → 5 Power (4s)
+
+## Upgrades
+
+- **Electric Furnace**: 2 Circuit + 4 Copper Wire — retrofits one furnace
+- **Electric Factory**: 3 Circuit + 6 Copper Wire — retrofits one factory

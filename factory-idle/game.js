@@ -8,6 +8,7 @@ const RESOURCES = {
   copper_bar:  { name: 'Copper Bar',  color: '#d4884a', perClick: 0 },
   copper_wire: { name: 'Copper Wire', color: '#e09050', perClick: 0 },
   circuit:     { name: 'Circuit',     color: '#4caf50', perClick: 0 },
+  power:       { name: 'Power',       color: '#ffeb3b', perClick: 0 },
 };
 
 // Explore options — timed searches that yield mineable deposits
@@ -34,10 +35,42 @@ const CRAFTS = [
   {
     id: 'factory',
     name: 'Factory',
-    desc: 'Produce circuits and advanced items',
+    desc: 'Produce wire, circuits, and advanced items',
     cost: { stone: 15, iron_bar: 5, copper_bar: 5 },
     unlockRequires: 'copper_bar',
   },
+  {
+    id: 'power_plant',
+    name: 'Power Plant',
+    desc: 'Convert coal into power',
+    cost: { circuit: 5, copper_wire: 10, copper_bar: 5, iron_bar: 5 },
+    unlockRequires: 'circuit',
+  },
+];
+
+// Upgrade definitions
+const UPGRADES = [
+  {
+    id: 'electric_furnace',
+    name: 'Electric Furnace',
+    desc: 'Upgrade a furnace to use power instead of coal',
+    cost: { circuit: 2, copper_wire: 4 },
+    target: 'furnace',
+    unlockRequires: 'power',
+  },
+  {
+    id: 'electric_factory',
+    name: 'Electric Factory',
+    desc: 'Upgrade a factory to use power instead of coal',
+    cost: { circuit: 3, copper_wire: 6 },
+    target: 'factory',
+    unlockRequires: 'power',
+  },
+];
+
+// Power plant recipes
+const POWER_RECIPES = [
+  { id: 'power', name: 'Generate Power', input: { coal: 2 }, output: 'power', outputQty: 5, time: 4000 },
 ];
 
 // Factory recipes (timed, like furnaces but in factories)
@@ -46,10 +79,20 @@ const FACTORY_RECIPES = [
   { id: 'circuit',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, coal: 1 }, output: 'circuit',     time: 5000 },
 ];
 
-// Smelt recipes
+// Smelt recipes — electric variants use power instead of coal and are faster
 const SMELT_RECIPES = [
   { id: 'iron_bar',   name: 'Smelt Iron Bar',   input: { iron_ore: 1, coal: 1 },   output: 'iron_bar',   time: 3000 },
   { id: 'copper_bar', name: 'Smelt Copper Bar',  input: { copper_ore: 1, coal: 1 }, output: 'copper_bar', time: 3000 },
+];
+const ELECTRIC_SMELT_RECIPES = [
+  { id: 'iron_bar_e',   name: 'Smelt Iron Bar',   input: { iron_ore: 1, power: 1 },   output: 'iron_bar',   time: 2000 },
+  { id: 'copper_bar_e', name: 'Smelt Copper Bar',  input: { copper_ore: 1, power: 1 }, output: 'copper_bar', time: 2000 },
+];
+
+// Factory recipes — electric variants use power instead of coal and are faster
+const ELECTRIC_FACTORY_RECIPES = [
+  { id: 'copper_wire_e', name: 'Make Copper Wire', input: { copper_bar: 1 },                      output: 'copper_wire', time: 1500 },
+  { id: 'circuit_e',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, power: 1 }, output: 'circuit',     time: 3500 },
 ];
 
 // Game state
@@ -58,8 +101,9 @@ const state = {
   deposits: {},        // resource_id: amount available to mine
   discovered: {},      // resource_id: true/false (ever found)
   structures: {},      // structure_id: count
-  furnaces: [],        // array of { active, recipe, startTime, duration }
-  factories: [],       // array of { active, recipe, startTime, duration }
+  furnaces: [],        // array of { active, recipe, startTime, duration, electric }
+  factories: [],       // array of { active, recipe, startTime, duration, electric }
+  power_plants: [],    // array of { active, recipe, startTime, duration }
   searches: {},        // resource_id: { active, startTime, duration } — active search timers
 };
 
@@ -89,6 +133,11 @@ const dom = {
   factoryPanel: document.getElementById('factory-panel'),
   factoryButtons: document.getElementById('factory-buttons'),
   factorySlots: document.getElementById('factory-slots'),
+  powerPanel: document.getElementById('power-panel'),
+  powerButtons: document.getElementById('power-buttons'),
+  powerSlots: document.getElementById('power-slots'),
+  upgradePanel: document.getElementById('upgrade-panel'),
+  upgradeButtons: document.getElementById('upgrade-buttons'),
   messageLog: document.getElementById('message-log'),
 };
 
@@ -361,10 +410,13 @@ function buildCraft(craft) {
   }
   state.structures[craft.id] = (state.structures[craft.id] || 0) + 1;
   if (craft.id === 'furnace') {
-    state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0 });
+    state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0, electric: false });
   }
   if (craft.id === 'factory') {
-    state.factories.push({ active: false, recipe: null, startTime: 0, duration: 0 });
+    state.factories.push({ active: false, recipe: null, startTime: 0, duration: 0, electric: false });
+  }
+  if (craft.id === 'power_plant') {
+    state.power_plants.push({ active: false, recipe: null, startTime: 0, duration: 0 });
   }
   showMessage(`Built ${craft.name}! (${state.structures[craft.id]} total)`, 'success');
   renderAll();
@@ -397,43 +449,58 @@ function renderSmelt() {
   renderFurnaceSlots();
 }
 
+function getSmeltRecipes() {
+  // Show normal recipes if any non-electric furnaces are idle, electric recipes if any electric furnaces are idle
+  const recipes = [];
+  const hasIdleNormal = state.furnaces.some(f => !f.active && !f.electric);
+  const hasIdleElectric = state.furnaces.some(f => !f.active && f.electric);
+
+  if (hasIdleNormal) {
+    for (const r of SMELT_RECIPES) recipes.push({ ...r, electric: false });
+  }
+  if (hasIdleElectric) {
+    for (const r of ELECTRIC_SMELT_RECIPES) recipes.push({ ...r, electric: true });
+  }
+  // If no idle furnaces, show normal recipes (will be disabled)
+  if (!hasIdleNormal && !hasIdleElectric) {
+    for (const r of SMELT_RECIPES) recipes.push({ ...r, electric: false });
+  }
+  return recipes;
+}
+
 function renderSmeltButtons() {
   dom.smeltButtons.innerHTML = '';
 
-  const idle = getIdleFurnaceCount();
+  const idleNormal = state.furnaces.filter(f => !f.active && !f.electric).length;
+  const idleElectric = state.furnaces.filter(f => !f.active && f.electric).length;
+  const recipes = getSmeltRecipes();
 
-  for (const recipe of SMELT_RECIPES) {
+  for (const recipe of recipes) {
     const inputResources = Object.keys(recipe.input);
     const allDiscovered = inputResources.every(r => state.discovered[r]);
     if (!allDiscovered) continue;
 
+    const idle = recipe.electric ? idleElectric : idleNormal;
+    const label = recipe.electric ? 'electric furnace' : 'furnace';
     const btn = document.createElement('button');
-    btn.className = 'game-btn smelt-btn';
+    btn.className = 'game-btn smelt-btn' + (recipe.electric ? ' electric' : '');
     btn.dataset.recipeId = recipe.id;
+    btn.dataset.electric = recipe.electric ? '1' : '0';
     btn.innerHTML = `
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
-      <span class="btn-label">${recipe.name}</span>
+      <span class="btn-label">${recipe.name}${recipe.electric ? ' ⚡' : ''}</span>
       <span class="btn-cost">${formatCost(recipe.input, ' + ')}</span>
-      <span class="btn-cost">${idle} furnace${idle !== 1 ? 's' : ''} available</span>
+      <span class="btn-cost">${idle} ${label}${idle !== 1 ? 's' : ''} available</span>
     `;
     btn.disabled = !canAfford(recipe.input) || idle === 0;
-    btn.addEventListener('click', () => startSmelt(recipe));
+    btn.addEventListener('click', () => startSmelt(recipe, recipe.electric));
     dom.smeltButtons.appendChild(btn);
   }
 }
 
 function updateSmeltButtons() {
-  const idle = getIdleFurnaceCount();
-  const buttons = dom.smeltButtons.querySelectorAll('.smelt-btn');
-  buttons.forEach(btn => {
-    const recipe = SMELT_RECIPES.find(r => r.id === btn.dataset.recipeId);
-    if (recipe) {
-      btn.disabled = !canAfford(recipe.input) || idle === 0;
-      const costSpans = btn.querySelectorAll('.btn-cost');
-      if (costSpans[0]) costSpans[0].innerHTML = formatCost(recipe.input, ' + ');
-      if (costSpans[1]) costSpans[1].textContent = `${idle} furnace${idle !== 1 ? 's' : ''} available`;
-    }
-  });
+  // Re-render smelt buttons since available recipe set can change when furnaces become idle
+  renderSmeltButtons();
 }
 
 function getIdleFurnaceCount() {
@@ -451,7 +518,7 @@ function renderFurnaceSlots() {
 
     const label = document.createElement('div');
     label.className = 'furnace-slot-label';
-    label.textContent = `Furnace ${i + 1}`;
+    label.textContent = f.electric ? `⚡ Electric Furnace ${i + 1}` : `Furnace ${i + 1}`;
 
     const statusText = document.createElement('span');
     statusText.className = 'furnace-slot-status';
@@ -462,7 +529,7 @@ function renderFurnaceSlots() {
     barContainer.className = 'bar-container furnace-bar';
 
     const bar = document.createElement('div');
-    bar.className = 'bar';
+    bar.className = f.electric ? 'bar electric-bar-fill' : 'bar';
     bar.id = `furnace-bar-${i}`;
     bar.style.width = '0%';
 
@@ -480,8 +547,8 @@ function renderFurnaceSlots() {
 }
 
 // --- Smelting ---
-function startSmelt(recipe) {
-  const furnaceIndex = state.furnaces.findIndex(f => !f.active);
+function startSmelt(recipe, electric = false) {
+  const furnaceIndex = state.furnaces.findIndex(f => !f.active && f.electric === electric);
   if (furnaceIndex === -1) return;
   if (!canAfford(recipe.input)) return;
 
@@ -547,6 +614,7 @@ function furnaceTick() {
       renderCraft();
       updateSmeltButtons();
       updateFactoryButtons();
+      renderUpgrade();
     } else {
       anyActive = true;
     }
@@ -638,42 +706,54 @@ function renderFactory() {
   renderFactorySlots();
 }
 
+function getFactoryRecipes() {
+  const recipes = [];
+  const hasIdleNormal = state.factories.some(f => !f.active && !f.electric);
+  const hasIdleElectric = state.factories.some(f => !f.active && f.electric);
+
+  if (hasIdleNormal) {
+    for (const r of FACTORY_RECIPES) recipes.push({ ...r, electric: false });
+  }
+  if (hasIdleElectric) {
+    for (const r of ELECTRIC_FACTORY_RECIPES) recipes.push({ ...r, electric: true });
+  }
+  if (!hasIdleNormal && !hasIdleElectric) {
+    for (const r of FACTORY_RECIPES) recipes.push({ ...r, electric: false });
+  }
+  return recipes;
+}
+
 function renderFactoryButtons() {
   dom.factoryButtons.innerHTML = '';
-  const idle = getIdleFactoryCount();
+  const idleNormal = state.factories.filter(f => !f.active && !f.electric).length;
+  const idleElectric = state.factories.filter(f => !f.active && f.electric).length;
+  const recipes = getFactoryRecipes();
 
-  for (const recipe of FACTORY_RECIPES) {
+  for (const recipe of recipes) {
     const inputResources = Object.keys(recipe.input);
     const allDiscovered = inputResources.every(r => state.discovered[r]);
     if (!allDiscovered) continue;
 
+    const idle = recipe.electric ? idleElectric : idleNormal;
+    const label = recipe.electric ? 'electric factor' : 'factor';
     const btn = document.createElement('button');
-    btn.className = 'game-btn factory-recipe-btn';
+    btn.className = 'game-btn factory-recipe-btn' + (recipe.electric ? ' electric' : '');
     btn.dataset.recipeId = recipe.id;
+    btn.dataset.electric = recipe.electric ? '1' : '0';
     btn.innerHTML = `
       <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
-      <span class="btn-label">${recipe.name}</span>
+      <span class="btn-label">${recipe.name}${recipe.electric ? ' ⚡' : ''}</span>
       <span class="btn-cost">${formatCost(recipe.input, ' + ')}</span>
-      <span class="btn-cost">${idle} factor${idle !== 1 ? 'ies' : 'y'} available</span>
+      <span class="btn-cost">${idle} ${label}${idle !== 1 ? 'ies' : 'y'} available</span>
     `;
     btn.disabled = !canAfford(recipe.input) || idle === 0;
-    btn.addEventListener('click', () => startFactory(recipe));
+    btn.addEventListener('click', () => startFactory(recipe, recipe.electric));
     dom.factoryButtons.appendChild(btn);
   }
 }
 
 function updateFactoryButtons() {
-  const idle = getIdleFactoryCount();
-  const buttons = dom.factoryButtons.querySelectorAll('.factory-recipe-btn');
-  buttons.forEach(btn => {
-    const recipe = FACTORY_RECIPES.find(r => r.id === btn.dataset.recipeId);
-    if (recipe) {
-      btn.disabled = !canAfford(recipe.input) || idle === 0;
-      const costSpans = btn.querySelectorAll('.btn-cost');
-      if (costSpans[0]) costSpans[0].innerHTML = formatCost(recipe.input, ' + ');
-      if (costSpans[1]) costSpans[1].textContent = `${idle} factor${idle !== 1 ? 'ies' : 'y'} available`;
-    }
-  });
+  renderFactoryButtons();
 }
 
 function getIdleFactoryCount() {
@@ -690,7 +770,7 @@ function renderFactorySlots() {
 
     const label = document.createElement('div');
     label.className = 'furnace-slot-label';
-    label.textContent = `Factory ${i + 1}`;
+    label.textContent = f.electric ? `⚡ Electric Factory ${i + 1}` : `Factory ${i + 1}`;
 
     const statusText = document.createElement('span');
     statusText.className = 'furnace-slot-status';
@@ -701,7 +781,7 @@ function renderFactorySlots() {
     barContainer.className = 'bar-container furnace-bar';
 
     const bar = document.createElement('div');
-    bar.className = 'bar factory-bar-fill';
+    bar.className = f.electric ? 'bar electric-bar-fill' : 'bar factory-bar-fill';
     bar.id = `factory-bar-${i}`;
     bar.style.width = '0%';
 
@@ -718,8 +798,8 @@ function renderFactorySlots() {
   }
 }
 
-function startFactory(recipe) {
-  const factoryIndex = state.factories.findIndex(f => !f.active);
+function startFactory(recipe, electric = false) {
+  const factoryIndex = state.factories.findIndex(f => !f.active && f.electric === electric);
   if (factoryIndex === -1) return;
   if (!canAfford(recipe.input)) return;
 
@@ -782,6 +862,8 @@ function factoryTick() {
 
       renderResources();
       updateFactoryButtons();
+      renderCraft();
+      renderUpgrade();
     } else {
       anyActive = true;
     }
@@ -794,6 +876,226 @@ function factoryTick() {
   }
 }
 
+// ========== POWER PLANT SYSTEM ==========
+
+function renderPower() {
+  if (!state.structures.power_plant) {
+    dom.powerPanel.classList.add('hidden');
+    return;
+  }
+  dom.powerPanel.classList.remove('hidden');
+
+  renderPowerButtons();
+  renderPowerSlots();
+}
+
+function renderPowerButtons() {
+  dom.powerButtons.innerHTML = '';
+  const idle = state.power_plants.filter(p => !p.active).length;
+
+  for (const recipe of POWER_RECIPES) {
+    const btn = document.createElement('button');
+    btn.className = 'game-btn power-btn';
+    btn.dataset.recipeId = recipe.id;
+    btn.innerHTML = `
+      <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
+      <span class="btn-label">${recipe.name}</span>
+      <span class="btn-cost">${formatCost(recipe.input, ' + ')} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}</span>
+      <span class="btn-cost">${idle} plant${idle !== 1 ? 's' : ''} available</span>
+    `;
+    btn.disabled = !canAfford(recipe.input) || idle === 0;
+    btn.addEventListener('click', () => startPower(recipe));
+    dom.powerButtons.appendChild(btn);
+  }
+}
+
+function updatePowerButtons() {
+  renderPowerButtons();
+}
+
+function renderPowerSlots() {
+  dom.powerSlots.innerHTML = '';
+  for (let i = 0; i < state.power_plants.length; i++) {
+    const p = state.power_plants[i];
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot' + (p.active ? ' active' : '');
+    slot.id = `power-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `Power Plant ${i + 1}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `power-status-${i}`;
+    statusText.textContent = p.active ? 'Generating power...' : 'Idle';
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar power-bar-fill';
+    bar.id = `power-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.powerSlots.appendChild(slot);
+  }
+}
+
+function startPower(recipe) {
+  const plantIndex = state.power_plants.findIndex(p => !p.active);
+  if (plantIndex === -1) return;
+  if (!canAfford(recipe.input)) return;
+
+  for (const [r, n] of Object.entries(recipe.input)) {
+    state.resources[r] -= n;
+  }
+
+  const plant = state.power_plants[plantIndex];
+  plant.active = true;
+  plant.recipe = recipe;
+  plant.startTime = Date.now();
+  plant.duration = recipe.time;
+
+  renderResources();
+  updatePowerButtons();
+
+  const slot = document.getElementById(`power-slot-${plantIndex}`);
+  if (slot) slot.classList.add('active');
+  const statusEl = document.getElementById(`power-status-${plantIndex}`);
+  if (statusEl) statusEl.textContent = 'Generating power...';
+
+  if (!powerTickRunning) {
+    powerTickRunning = true;
+    requestAnimationFrame(powerTick);
+  }
+}
+
+let powerTickRunning = false;
+
+function powerTick() {
+  let anyActive = false;
+
+  for (let i = 0; i < state.power_plants.length; i++) {
+    const p = state.power_plants[i];
+    if (!p.active) continue;
+
+    const elapsed = Date.now() - p.startTime;
+    const pct = Math.min(100, (elapsed / p.duration) * 100);
+
+    const bar = document.getElementById(`power-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= p.duration) {
+      const qty = p.recipe.outputQty;
+      state.resources[p.recipe.output] += qty;
+      state.discovered[p.recipe.output] = true;
+
+      showMessage(`Power Plant ${i + 1}: Generated ${qty} ${RESOURCES[p.recipe.output].name}!`, 'success');
+
+      p.active = false;
+      p.recipe = null;
+
+      if (bar) bar.style.width = '0%';
+      const slot = document.getElementById(`power-slot-${i}`);
+      if (slot) slot.classList.remove('active');
+      const statusEl = document.getElementById(`power-status-${i}`);
+      if (statusEl) statusEl.textContent = 'Idle';
+
+      renderResources();
+      updatePowerButtons();
+      updateSmeltButtons();
+      updateFactoryButtons();
+      renderUpgrade();
+    } else {
+      anyActive = true;
+    }
+  }
+
+  if (anyActive) {
+    requestAnimationFrame(powerTick);
+  } else {
+    powerTickRunning = false;
+  }
+}
+
+// ========== UPGRADE / RETROFIT SYSTEM ==========
+
+function renderUpgrade() {
+  let anyVisible = false;
+
+  dom.upgradeButtons.innerHTML = '';
+  for (const upgrade of UPGRADES) {
+    if (upgrade.unlockRequires && !state.discovered[upgrade.unlockRequires]) continue;
+
+    // Count non-electric slots of the target type
+    let upgradeableCount = 0;
+    if (upgrade.target === 'furnace') {
+      upgradeableCount = state.furnaces.filter(f => !f.electric && !f.active).length;
+    } else if (upgrade.target === 'factory') {
+      upgradeableCount = state.factories.filter(f => !f.electric && !f.active).length;
+    }
+
+    if (upgradeableCount === 0 && !canAfford(upgrade.cost)) continue;
+    anyVisible = true;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn upgrade-btn';
+    btn.innerHTML = `
+      <span class="btn-label">${upgrade.name} ⚡</span>
+      <span class="btn-cost">${formatCost(upgrade.cost)}</span>
+      <span class="btn-cost">${upgradeableCount} available to upgrade</span>
+    `;
+    btn.disabled = !canAfford(upgrade.cost) || upgradeableCount === 0;
+    btn.addEventListener('click', () => applyUpgrade(upgrade));
+    dom.upgradeButtons.appendChild(btn);
+  }
+
+  if (anyVisible) {
+    dom.upgradePanel.classList.remove('hidden');
+  } else {
+    dom.upgradePanel.classList.add('hidden');
+  }
+}
+
+function applyUpgrade(upgrade) {
+  if (!canAfford(upgrade.cost)) return;
+
+  let slotIndex = -1;
+  if (upgrade.target === 'furnace') {
+    slotIndex = state.furnaces.findIndex(f => !f.electric && !f.active);
+    if (slotIndex === -1) return;
+  } else if (upgrade.target === 'factory') {
+    slotIndex = state.factories.findIndex(f => !f.electric && !f.active);
+    if (slotIndex === -1) return;
+  }
+
+  // Pay cost
+  for (const [r, n] of Object.entries(upgrade.cost)) {
+    state.resources[r] -= n;
+  }
+
+  // Apply upgrade
+  if (upgrade.target === 'furnace') {
+    state.furnaces[slotIndex].electric = true;
+    showMessage(`Upgraded Furnace ${slotIndex + 1} to Electric!`, 'success');
+  } else if (upgrade.target === 'factory') {
+    state.factories[slotIndex].electric = true;
+    showMessage(`Upgraded Factory ${slotIndex + 1} to Electric!`, 'success');
+  }
+
+  renderAll();
+}
+
 // ========== RENDER ALL ==========
 
 function renderAll() {
@@ -804,6 +1106,8 @@ function renderAll() {
   renderHandcraft();
   renderSmelt();
   renderFactory();
+  renderPower();
+  renderUpgrade();
 }
 
 // Init
