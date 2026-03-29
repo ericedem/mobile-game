@@ -231,9 +231,21 @@ h2 {
   border-color: #4a3a2e;
 }
 
+.handcraft-btn {
+  border-color: #4a3a5e;
+}
+
+.factory-recipe-btn {
+  border-color: #2e4a3a;
+}
+
 .smelt-btn.active {
   border-color: #f0a030;
   box-shadow: 0 0 10px rgba(240, 160, 48, 0.2);
+}
+
+.factory-bar-fill {
+  background: linear-gradient(to right, #4caf50, #2e7d32);
 }
 
 /* Furnace slots */

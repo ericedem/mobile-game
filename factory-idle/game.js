@@ -1,11 +1,13 @@
 // Resource definitions
 const RESOURCES = {
-  stone:      { name: 'Stone',      color: '#999',    perClick: 1 },
-  coal:       { name: 'Coal',       color: '#555',    perClick: 1 },
-  iron_ore:   { name: 'Iron Ore',   color: '#b05030', perClick: 1 },
-  copper_ore: { name: 'Copper Ore', color: '#c07040', perClick: 1 },
-  iron_bar:   { name: 'Iron Bar',   color: '#aab0b8', perClick: 0 },
-  copper_bar: { name: 'Copper Bar', color: '#d4884a', perClick: 0 },
+  stone:       { name: 'Stone',       color: '#999',    perClick: 1 },
+  coal:        { name: 'Coal',        color: '#555',    perClick: 1 },
+  iron_ore:    { name: 'Iron Ore',    color: '#b05030', perClick: 1 },
+  copper_ore:  { name: 'Copper Ore',  color: '#c07040', perClick: 1 },
+  iron_bar:    { name: 'Iron Bar',    color: '#aab0b8', perClick: 0 },
+  copper_bar:  { name: 'Copper Bar',  color: '#d4884a', perClick: 0 },
+  copper_wire: { name: 'Copper Wire', color: '#e09050', perClick: 0 },
+  circuit:     { name: 'Circuit',     color: '#4caf50', perClick: 0 },
 };
 
 // Explore options — timed searches that yield mineable deposits
@@ -14,6 +16,18 @@ const EXPLORE_OPTIONS = [
   { id: 'coal',       name: 'Search for Coal',   time: 3000,  yield: [4, 8]  },
   { id: 'iron_ore',   name: 'Search for Iron',   time: 4000,  yield: [3, 6]  },
   { id: 'copper_ore', name: 'Search for Copper',  time: 4000,  yield: [3, 6]  },
+];
+
+// Hand-crafting recipes (instant, no machine needed)
+const HANDCRAFT_RECIPES = [
+  {
+    id: 'copper_wire',
+    name: 'Craft Copper Wire',
+    input: { copper_bar: 1 },
+    output: 'copper_wire',
+    outputQty: 2,
+    unlockRequires: 'copper_bar',
+  },
 ];
 
 // Craftable structures
@@ -25,6 +39,18 @@ const CRAFTS = [
     cost: { stone: 10 },
     unlockRequires: 'stone',
   },
+  {
+    id: 'factory',
+    name: 'Factory',
+    desc: 'Produce circuits and advanced items',
+    cost: { stone: 15, iron_bar: 5, copper_bar: 5 },
+    unlockRequires: 'copper_wire',
+  },
+];
+
+// Factory recipes (timed, like furnaces but in factories)
+const FACTORY_RECIPES = [
+  { id: 'circuit', name: 'Make Circuit', input: { copper_wire: 3, iron_bar: 1, coal: 1 }, output: 'circuit', time: 5000 },
 ];
 
 // Smelt recipes
@@ -40,6 +66,7 @@ const state = {
   discovered: {},      // resource_id: true/false (ever found)
   structures: {},      // structure_id: count
   furnaces: [],        // array of { active, recipe, startTime, duration }
+  factories: [],       // array of { active, recipe, startTime, duration }
   searches: {},        // resource_id: { active, startTime, duration } — active search timers
 };
 
@@ -61,9 +88,14 @@ const dom = {
   mineButtons: document.getElementById('mine-buttons'),
   craftPanel: document.getElementById('craft-panel'),
   craftButtons: document.getElementById('craft-buttons'),
+  handcraftPanel: document.getElementById('handcraft-panel'),
+  handcraftButtons: document.getElementById('handcraft-buttons'),
   smeltPanel: document.getElementById('smelt-panel'),
   smeltButtons: document.getElementById('smelt-buttons'),
   furnaceSlots: document.getElementById('furnace-slots'),
+  factoryPanel: document.getElementById('factory-panel'),
+  factoryButtons: document.getElementById('factory-buttons'),
+  factorySlots: document.getElementById('factory-slots'),
   messageLog: document.getElementById('message-log'),
 };
 
@@ -264,7 +296,9 @@ function mine(id, def, event) {
   state.resources[id] += def.perClick;
   updateResourceCount(id);
   updateCraftButtons();
+  updateHandcraftButtons();
   updateSmeltButtons();
+  updateFactoryButtons();
 
   // Update mine button
   const btn = document.getElementById(`mine-btn-${id}`);
@@ -327,6 +361,9 @@ function buildCraft(craft) {
   state.structures[craft.id] = (state.structures[craft.id] || 0) + 1;
   if (craft.id === 'furnace') {
     state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0 });
+  }
+  if (craft.id === 'factory') {
+    state.factories.push({ active: false, recipe: null, startTime: 0, duration: 0 });
   }
   showMessage(`Built ${craft.name}! (${state.structures[craft.id]} total)`, 'success');
   renderAll();
@@ -508,7 +545,10 @@ function furnaceTick() {
       if (statusEl) statusEl.textContent = 'Idle';
 
       renderResources();
+      renderHandcraft();
+      renderCraft();
       updateSmeltButtons();
+      updateFactoryButtons();
     } else {
       anyActive = true;
     }
@@ -521,6 +561,246 @@ function furnaceTick() {
   }
 }
 
+// ========== HANDCRAFT SYSTEM ==========
+
+function renderHandcraft() {
+  let anyVisible = false;
+
+  dom.handcraftButtons.innerHTML = '';
+  for (const recipe of HANDCRAFT_RECIPES) {
+    if (recipe.unlockRequires && !state.discovered[recipe.unlockRequires]) continue;
+    anyVisible = true;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn handcraft-btn';
+    btn.dataset.recipeId = recipe.id;
+    const costText = Object.entries(recipe.input)
+      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
+      .join(' + ');
+    btn.innerHTML = `
+      <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
+      <span class="btn-label">${recipe.name}</span>
+      <span class="btn-cost">${costText} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}</span>
+    `;
+    btn.disabled = !canAfford(recipe.input);
+    btn.addEventListener('click', (e) => handcraft(recipe, e));
+    dom.handcraftButtons.appendChild(btn);
+  }
+
+  if (anyVisible) {
+    dom.handcraftPanel.classList.remove('hidden');
+  } else {
+    dom.handcraftPanel.classList.add('hidden');
+  }
+}
+
+function handcraft(recipe, event) {
+  if (!canAfford(recipe.input)) return;
+
+  for (const [r, n] of Object.entries(recipe.input)) {
+    state.resources[r] -= n;
+  }
+  state.resources[recipe.output] += recipe.outputQty;
+  state.discovered[recipe.output] = true;
+
+  showMessage(`Crafted ${recipe.outputQty} ${RESOURCES[recipe.output].name}!`, 'success');
+
+  // Float number
+  if (event) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    showFloat(`+${recipe.outputQty}`, rect.left + rect.width / 2 - 10, rect.top - 10);
+  }
+
+  renderResources();
+  updateHandcraftButtons();
+  updateCraftButtons();
+  updateSmeltButtons();
+  updateFactoryButtons();
+}
+
+function updateHandcraftButtons() {
+  const buttons = dom.handcraftButtons.querySelectorAll('.handcraft-btn');
+  buttons.forEach(btn => {
+    const recipe = HANDCRAFT_RECIPES.find(r => r.id === btn.dataset.recipeId);
+    if (recipe) {
+      btn.disabled = !canAfford(recipe.input);
+    }
+  });
+}
+
+// ========== FACTORY SYSTEM ==========
+
+function renderFactory() {
+  if (!state.structures.factory) {
+    dom.factoryPanel.classList.add('hidden');
+    return;
+  }
+  dom.factoryPanel.classList.remove('hidden');
+
+  renderFactoryButtons();
+  renderFactorySlots();
+}
+
+function renderFactoryButtons() {
+  dom.factoryButtons.innerHTML = '';
+  const idle = getIdleFactoryCount();
+
+  for (const recipe of FACTORY_RECIPES) {
+    const inputResources = Object.keys(recipe.input);
+    const allDiscovered = inputResources.every(r => state.discovered[r]);
+    if (!allDiscovered) continue;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn factory-recipe-btn';
+    btn.dataset.recipeId = recipe.id;
+    const costText = Object.entries(recipe.input)
+      .map(([r, n]) => `${n} ${RESOURCES[r].name}`)
+      .join(' + ');
+    btn.innerHTML = `
+      <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
+      <span class="btn-label">${recipe.name}</span>
+      <span class="btn-cost">${costText}</span>
+      <span class="btn-cost">${idle} factor${idle !== 1 ? 'ies' : 'y'} available</span>
+    `;
+    btn.disabled = !canAfford(recipe.input) || idle === 0;
+    btn.addEventListener('click', () => startFactory(recipe));
+    dom.factoryButtons.appendChild(btn);
+  }
+}
+
+function updateFactoryButtons() {
+  const idle = getIdleFactoryCount();
+  const buttons = dom.factoryButtons.querySelectorAll('.factory-recipe-btn');
+  buttons.forEach(btn => {
+    const recipe = FACTORY_RECIPES.find(r => r.id === btn.dataset.recipeId);
+    if (recipe) {
+      btn.disabled = !canAfford(recipe.input) || idle === 0;
+      const costSpans = btn.querySelectorAll('.btn-cost');
+      if (costSpans.length >= 2) {
+        costSpans[1].textContent = `${idle} factor${idle !== 1 ? 'ies' : 'y'} available`;
+      }
+    }
+  });
+}
+
+function getIdleFactoryCount() {
+  return state.factories.filter(f => !f.active).length;
+}
+
+function renderFactorySlots() {
+  dom.factorySlots.innerHTML = '';
+  for (let i = 0; i < state.factories.length; i++) {
+    const f = state.factories[i];
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot' + (f.active ? ' active' : '');
+    slot.id = `factory-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `Factory ${i + 1}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `factory-status-${i}`;
+    statusText.textContent = f.active ? `Making ${RESOURCES[f.recipe.output].name}...` : 'Idle';
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar factory-bar-fill';
+    bar.id = `factory-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.factorySlots.appendChild(slot);
+  }
+}
+
+function startFactory(recipe) {
+  const factoryIndex = state.factories.findIndex(f => !f.active);
+  if (factoryIndex === -1) return;
+  if (!canAfford(recipe.input)) return;
+
+  for (const [r, n] of Object.entries(recipe.input)) {
+    state.resources[r] -= n;
+  }
+
+  const factory = state.factories[factoryIndex];
+  factory.active = true;
+  factory.recipe = recipe;
+  factory.startTime = Date.now();
+  factory.duration = recipe.time;
+
+  renderResources();
+  updateCraftButtons();
+  updateSmeltButtons();
+  updateHandcraftButtons();
+  updateFactoryButtons();
+
+  const slot = document.getElementById(`factory-slot-${factoryIndex}`);
+  if (slot) slot.classList.add('active');
+  const statusEl = document.getElementById(`factory-status-${factoryIndex}`);
+  if (statusEl) statusEl.textContent = `Making ${RESOURCES[recipe.output].name}...`;
+
+  if (!factoryTickRunning) {
+    factoryTickRunning = true;
+    requestAnimationFrame(factoryTick);
+  }
+}
+
+let factoryTickRunning = false;
+
+function factoryTick() {
+  let anyActive = false;
+
+  for (let i = 0; i < state.factories.length; i++) {
+    const f = state.factories[i];
+    if (!f.active) continue;
+
+    const elapsed = Date.now() - f.startTime;
+    const pct = Math.min(100, (elapsed / f.duration) * 100);
+
+    const bar = document.getElementById(`factory-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= f.duration) {
+      state.resources[f.recipe.output] += 1;
+      state.discovered[f.recipe.output] = true;
+
+      showMessage(`Factory ${i + 1}: Made 1 ${RESOURCES[f.recipe.output].name}!`, 'success');
+
+      f.active = false;
+      f.recipe = null;
+
+      if (bar) bar.style.width = '0%';
+      const slot = document.getElementById(`factory-slot-${i}`);
+      if (slot) slot.classList.remove('active');
+      const statusEl = document.getElementById(`factory-status-${i}`);
+      if (statusEl) statusEl.textContent = 'Idle';
+
+      renderResources();
+      updateFactoryButtons();
+    } else {
+      anyActive = true;
+    }
+  }
+
+  if (anyActive) {
+    requestAnimationFrame(factoryTick);
+  } else {
+    factoryTickRunning = false;
+  }
+}
+
 // ========== RENDER ALL ==========
 
 function renderAll() {
@@ -528,7 +808,9 @@ function renderAll() {
   renderExplore();
   renderMine();
   renderCraft();
+  renderHandcraft();
   renderSmelt();
+  renderFactory();
 }
 
 // Init
