@@ -43,6 +43,7 @@ function getPlayerMaxHp() {
 // DOM refs
 const screens = {
   title: document.getElementById('title-screen'),
+  story: document.getElementById('story-screen'),
   battle: document.getElementById('battle-screen'),
   victory: document.getElementById('victory-screen'),
   shop: document.getElementById('shop-screen'),
@@ -71,6 +72,9 @@ const ui = {
   victoryText: document.getElementById('victory-text'),
   victoryReward: document.getElementById('victory-reward'),
   gameoverText: document.getElementById('gameover-text'),
+  storyTitle: document.getElementById('story-title'),
+  storyText: document.getElementById('story-text'),
+  storyContinueBtn: document.getElementById('story-continue-btn'),
   shopGoldAmount: document.getElementById('shop-gold-amount'),
   shopItems: document.getElementById('shop-items'),
   shopNextArea: document.getElementById('shop-next-area'),
@@ -100,7 +104,7 @@ function updateHud() {
   ui.playerXpText.textContent = `XP ${state.player.xp} / ${xpNeeded}`;
 
   ui.playerName.textContent = `Hero Lv.${state.player.level}`;
-  ui.areaNum.textContent = state.area;
+  ui.areaNum.textContent = getAreaName(state.area);
   ui.goldDisplay.textContent = `${state.player.gold}g`;
   ui.healCount.textContent = `(${state.player.heals})`;
 }
@@ -418,6 +422,61 @@ function renderShop() {
   }
 }
 
+// Story display
+function showStory(title, lines, onContinue) {
+  ui.storyTitle.textContent = title;
+  ui.storyText.innerHTML = '';
+
+  lines.forEach((line, i) => {
+    const p = document.createElement('p');
+    p.className = 'story-line';
+    p.textContent = line;
+    p.style.animationDelay = (i * 0.6) + 's';
+    ui.storyText.appendChild(p);
+  });
+
+  // Show continue button after all lines have appeared
+  ui.storyContinueBtn.style.opacity = '0';
+  ui.storyContinueBtn.disabled = true;
+  const delay = lines.length * 600 + 500;
+  setTimeout(() => {
+    ui.storyContinueBtn.style.opacity = '1';
+    ui.storyContinueBtn.disabled = false;
+  }, delay);
+
+  ui.storyContinueBtn.onclick = onContinue;
+  showScreen('story');
+}
+
+// Show intro story then start area 1
+function showIntro() {
+  showStory('', STORY.intro, () => {
+    const areaStory = getAreaStory(1);
+    showStory(areaStory.title, areaStory.lines, () => {
+      startBattle();
+    });
+  });
+}
+
+// Show area transition story
+function showAreaTransition(area) {
+  // After beating area 10, show epilogue first
+  if (area === 11) {
+    showStory('The Gate Falls...', STORY.epilogue, () => {
+      const areaStory = getAreaStory(area);
+      showStory(areaStory.title, areaStory.lines, () => {
+        startBattle();
+      });
+    });
+    return;
+  }
+
+  const areaStory = getAreaStory(area);
+  showStory(areaStory.title, areaStory.lines, () => {
+    startBattle();
+  });
+}
+
 // Reset game
 function resetGame() {
   state.area = 1;
@@ -432,7 +491,7 @@ function resetGame() {
   state.player.heals = 3;
   state.player.maxHeals = 3;
   state.player.equipment = { weapon: null, armor: null, accessory: null };
-  startBattle();
+  showIntro();
 }
 
 // Event listeners
@@ -464,7 +523,7 @@ document.getElementById('shop-leave-btn').addEventListener('click', () => {
   // Full heal when entering new area
   state.player.maxHp = getPlayerMaxHp();
   state.player.hp = state.player.maxHp;
-  startBattle();
+  showAreaTransition(state.area);
 });
 
 document.getElementById('retry-btn').addEventListener('click', () => {

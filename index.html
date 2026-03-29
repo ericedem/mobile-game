@@ -17,6 +17,15 @@
       <button id="start-btn" class="btn">Draw Your Sword</button>
     </div>
 
+    <!-- Story Screen -->
+    <div id="story-screen" class="screen">
+      <div id="story-content">
+        <h2 id="story-title"></h2>
+        <div id="story-text"></div>
+      </div>
+      <button id="story-continue-btn" class="btn">Continue</button>
+    </div>
+
     <!-- Battle Screen -->
     <div id="battle-screen" class="screen">
       <div id="hud">
@@ -32,7 +41,7 @@
           <span id="player-xp-text" class="bar-text"></span>
         </div>
         <div id="level-display">
-          <div>Area <span id="area-num">1</span></div>
+          <div id="area-num"></div>
           <div id="gold-display">0g</div>
         </div>
         <div id="monster-hud">
@@ -92,6 +101,7 @@
 
   <script src="monsters.js"></script>
   <script src="items.js"></script>
+  <script src="story.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
