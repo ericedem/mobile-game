@@ -20,14 +20,6 @@ const EXPLORE_OPTIONS = [
 
 // Hand-crafting recipes (instant, no machine needed)
 const HANDCRAFT_RECIPES = [
-  {
-    id: 'copper_wire',
-    name: 'Craft Copper Wire',
-    input: { copper_bar: 1 },
-    output: 'copper_wire',
-    outputQty: 2,
-    unlockRequires: 'copper_bar',
-  },
 ];
 
 // Craftable structures
@@ -44,13 +36,14 @@ const CRAFTS = [
     name: 'Factory',
     desc: 'Produce circuits and advanced items',
     cost: { stone: 15, iron_bar: 5, copper_bar: 5 },
-    unlockRequires: 'copper_wire',
+    unlockRequires: 'copper_bar',
   },
 ];
 
 // Factory recipes (timed, like furnaces but in factories)
 const FACTORY_RECIPES = [
-  { id: 'circuit', name: 'Make Circuit', input: { copper_wire: 3, iron_bar: 1, coal: 1 }, output: 'circuit', time: 5000 },
+  { id: 'copper_wire', name: 'Make Copper Wire', input: { copper_bar: 1 },                    output: 'copper_wire', time: 2000 },
+  { id: 'circuit',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, coal: 1 }, output: 'circuit',     time: 5000 },
 ];
 
 // Smelt recipes
