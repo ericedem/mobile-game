@@ -1,5 +1,6 @@
 // Resource definitions
 const RESOURCES = {
+  wood:        { name: 'Wood',        color: '#8B5E3C', perClick: 1 },
   stone:       { name: 'Stone',       color: '#999',    perClick: 1 },
   coal:        { name: 'Coal',        color: '#555',    perClick: 1 },
   iron_ore:    { name: 'Iron Ore',    color: '#b05030', perClick: 1 },
@@ -13,10 +14,26 @@ const RESOURCES = {
 
 // Explore options — timed searches that yield mineable deposits
 const EXPLORE_OPTIONS = [
-  { id: 'stone',      name: 'Search for Stone',  time: 2000,  yield: [5, 10] },
-  { id: 'coal',       name: 'Search for Coal',   time: 3000,  yield: [4, 8]  },
-  { id: 'iron_ore',   name: 'Search for Iron',   time: 4000,  yield: [3, 6]  },
-  { id: 'copper_ore', name: 'Search for Copper',  time: 4000,  yield: [3, 6]  },
+  { id: 'wood',       name: 'Search for Wood',   time: 1500,  yield: [6, 12] },
+  { id: 'stone',      name: 'Search for Stone',  time: 2000,  yield: [5, 10], requiresTool: 'axe' },
+  { id: 'coal',       name: 'Search for Coal',   time: 3000,  yield: [4, 8],  requiresTool: 'pickaxe' },
+  { id: 'iron_ore',   name: 'Search for Iron',   time: 4000,  yield: [3, 6],  requiresTool: 'pickaxe' },
+  { id: 'copper_ore', name: 'Search for Copper',  time: 4000,  yield: [3, 6],  requiresTool: 'pickaxe' },
+];
+
+// Mining times (ms) per resource — tools can speed things up
+const MINE_TIMES = {
+  wood:       { base: 2000, withTool: { axe: 1000 } },
+  stone:      { base: 2000 },
+  coal:       { base: 2500 },
+  iron_ore:   { base: 3000 },
+  copper_ore: { base: 3000 },
+};
+
+// Tool definitions — one-time crafts that provide permanent bonuses
+const TOOLS = [
+  { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, unlock stone deposits', cost: { wood: 10 }, unlockRequires: 'wood' },
+  { id: 'pickaxe', name: 'Stone Pickaxe',   desc: 'Unlock coal, iron, and copper deposits',  cost: { stone: 5, wood: 5 }, unlockRequires: 'stone' },
 ];
 
 // Hand-crafting recipes (instant, no machine needed)
@@ -100,11 +117,13 @@ const state = {
   resources: {},       // resource_id: count
   deposits: {},        // resource_id: amount available to mine
   discovered: {},      // resource_id: true/false (ever found)
+  tools: {},           // tool_id: true/false
   structures: {},      // structure_id: count
   furnaces: [],        // array of { active, recipe, startTime, duration, electric }
   factories: [],       // array of { active, recipe, startTime, duration, electric }
   power_plants: [],    // array of { active, recipe, startTime, duration }
   searches: {},        // resource_id: { active, startTime, duration } — active search timers
+  mining: {},          // resource_id: { active, startTime, duration } — active mining timers
 };
 
 // Initialize
@@ -112,9 +131,15 @@ for (const id of Object.keys(RESOURCES)) {
   state.resources[id] = 0;
   state.deposits[id] = 0;
   state.discovered[id] = false;
+  if (RESOURCES[id].perClick > 0) {
+    state.mining[id] = { active: false, startTime: 0, duration: 0 };
+  }
 }
 for (const opt of EXPLORE_OPTIONS) {
   state.searches[opt.id] = { active: false, startTime: 0, duration: 0 };
+}
+for (const tool of TOOLS) {
+  state.tools[tool.id] = false;
 }
 
 // DOM refs
@@ -123,6 +148,8 @@ const dom = {
   exploreButtons: document.getElementById('explore-buttons'),
   minePanel: document.getElementById('mine-panel'),
   mineButtons: document.getElementById('mine-buttons'),
+  toolsPanel: document.getElementById('tools-panel'),
+  toolsButtons: document.getElementById('tools-buttons'),
   craftPanel: document.getElementById('craft-panel'),
   craftButtons: document.getElementById('craft-buttons'),
   handcraftPanel: document.getElementById('handcraft-panel'),
@@ -201,6 +228,9 @@ function updateResourceCount(id) {
 function renderExplore() {
   dom.exploreButtons.innerHTML = '';
   for (const opt of EXPLORE_OPTIONS) {
+    // Hide options that require a tool the player doesn't have
+    if (opt.requiresTool && !state.tools[opt.requiresTool]) continue;
+
     const search = state.searches[opt.id];
 
     const wrapper = document.createElement('div');
@@ -288,6 +318,7 @@ function searchTick() {
 
       renderResources();
       renderMine();
+      renderTools();
       renderCraft();
     } else {
       anyActive = true;
@@ -303,6 +334,17 @@ function searchTick() {
 
 // ========== MINE SYSTEM ==========
 
+function getMineTime(id) {
+  const mt = MINE_TIMES[id];
+  if (!mt) return 2000;
+  if (mt.withTool) {
+    for (const [toolId, time] of Object.entries(mt.withTool)) {
+      if (state.tools[toolId]) return time;
+    }
+  }
+  return mt.base;
+}
+
 function renderMine() {
   const mineable = Object.entries(RESOURCES).filter(([id, def]) =>
     state.discovered[id] && def.perClick > 0
@@ -316,43 +358,166 @@ function renderMine() {
   dom.mineButtons.innerHTML = '';
 
   for (const [id, def] of mineable) {
+    const mining = state.mining[id];
+    const mineTime = getMineTime(id);
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mine-wrapper';
+    wrapper.id = `mine-wrapper-${id}`;
+
     const btn = document.createElement('button');
     btn.className = 'game-btn mine-btn';
     btn.id = `mine-btn-${id}`;
-    btn.disabled = state.deposits[id] <= 0;
+    btn.disabled = state.deposits[id] <= 0 || mining.active;
     btn.innerHTML = `
       <div class="btn-icon" style="background:${def.color}"></div>
       <span class="btn-label">Mine ${def.name}</span>
-      <span class="btn-cost">${state.deposits[id]} remaining</span>
-      <div class="mine-flash"></div>
+      <span class="btn-cost">${state.deposits[id]} remaining · ${(mineTime / 1000).toFixed(1)}s</span>
     `;
-    btn.addEventListener('click', (e) => mine(id, def, e));
-    dom.mineButtons.appendChild(btn);
+    btn.addEventListener('click', () => startMine(id, def));
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container mine-bar-container';
+    barContainer.id = `mine-bar-container-${id}`;
+    barContainer.style.display = mining.active ? 'block' : 'none';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar mine-bar';
+    bar.id = `mine-bar-${id}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+    wrapper.appendChild(btn);
+    wrapper.appendChild(barContainer);
+    dom.mineButtons.appendChild(wrapper);
   }
 }
 
-function mine(id, def, event) {
-  if (state.deposits[id] <= 0) return;
+function startMine(id, def) {
+  const mining = state.mining[id];
+  if (mining.active || state.deposits[id] <= 0) return;
 
-  state.deposits[id] -= def.perClick;
-  state.resources[id] += def.perClick;
-  updateResourceCount(id);
-  updateCraftButtons();
-  updateHandcraftButtons();
-  updateSmeltButtons();
-  updateFactoryButtons();
+  mining.active = true;
+  mining.startTime = Date.now();
+  mining.duration = getMineTime(id);
 
-  // Update mine button
   const btn = document.getElementById(`mine-btn-${id}`);
-  if (btn) {
-    const costSpan = btn.querySelector('.btn-cost');
-    if (costSpan) costSpan.textContent = `${state.deposits[id]} remaining`;
-    btn.disabled = state.deposits[id] <= 0;
+  if (btn) btn.disabled = true;
+  const barContainer = document.getElementById(`mine-bar-container-${id}`);
+  if (barContainer) barContainer.style.display = 'block';
+
+  if (!mineTickRunning) {
+    mineTickRunning = true;
+    requestAnimationFrame(mineTick);
+  }
+}
+
+let mineTickRunning = false;
+
+function mineTick() {
+  let anyActive = false;
+
+  for (const [id, def] of Object.entries(RESOURCES)) {
+    if (!def.perClick) continue;
+    const mining = state.mining[id];
+    if (!mining || !mining.active) continue;
+
+    const elapsed = Date.now() - mining.startTime;
+    const pct = Math.min(100, (elapsed / mining.duration) * 100);
+
+    const bar = document.getElementById(`mine-bar-${id}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= mining.duration) {
+      // Mining complete
+      state.deposits[id] -= def.perClick;
+      state.resources[id] += def.perClick;
+      mining.active = false;
+
+      if (bar) bar.style.width = '0%';
+      const barContainer = document.getElementById(`mine-bar-container-${id}`);
+      if (barContainer) barContainer.style.display = 'none';
+
+      updateResourceCount(id);
+      updateCraftButtons();
+      updateToolButtons();
+      updateHandcraftButtons();
+      updateSmeltButtons();
+      updateFactoryButtons();
+
+      // Update mine button
+      const btn = document.getElementById(`mine-btn-${id}`);
+      if (btn) {
+        const mineTime = getMineTime(id);
+        const costSpan = btn.querySelector('.btn-cost');
+        if (costSpan) costSpan.textContent = `${state.deposits[id]} remaining · ${(mineTime / 1000).toFixed(1)}s`;
+        btn.disabled = state.deposits[id] <= 0;
+      }
+    } else {
+      anyActive = true;
+    }
   }
 
-  // Float number
-  const rect = event.currentTarget.getBoundingClientRect();
-  showFloat(`+${def.perClick}`, rect.left + rect.width / 2 - 10, rect.top - 10);
+  if (anyActive) {
+    requestAnimationFrame(mineTick);
+  } else {
+    mineTickRunning = false;
+  }
+}
+
+// ========== TOOLS SYSTEM ==========
+
+function renderTools() {
+  let anyVisible = false;
+
+  dom.toolsButtons.innerHTML = '';
+  for (const tool of TOOLS) {
+    if (tool.unlockRequires && !state.discovered[tool.unlockRequires]) continue;
+    if (state.tools[tool.id]) continue; // already crafted
+    anyVisible = true;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn tool-btn';
+    btn.dataset.toolId = tool.id;
+    btn.innerHTML = `
+      <span class="btn-label">${tool.name}</span>
+      <span class="btn-cost">${formatCost(tool.cost)}</span>
+      <span class="btn-desc">${tool.desc}</span>
+    `;
+    btn.disabled = !canAfford(tool.cost);
+    btn.addEventListener('click', () => craftTool(tool));
+    dom.toolsButtons.appendChild(btn);
+  }
+
+  if (anyVisible) {
+    dom.toolsPanel.classList.remove('hidden');
+  } else {
+    dom.toolsPanel.classList.add('hidden');
+  }
+}
+
+function craftTool(tool) {
+  if (!canAfford(tool.cost) || state.tools[tool.id]) return;
+
+  for (const [r, n] of Object.entries(tool.cost)) {
+    state.resources[r] -= n;
+  }
+  state.tools[tool.id] = true;
+
+  showMessage(`Crafted ${tool.name}!`, 'success');
+  renderAll();
+}
+
+function updateToolButtons() {
+  const buttons = dom.toolsButtons.querySelectorAll('.tool-btn');
+  buttons.forEach(btn => {
+    const tool = TOOLS.find(t => t.id === btn.dataset.toolId);
+    if (tool) {
+      btn.disabled = !canAfford(tool.cost);
+      const costSpan = btn.querySelector('.btn-cost');
+      if (costSpan) costSpan.innerHTML = formatCost(tool.cost);
+    }
+  });
 }
 
 // ========== CRAFT SYSTEM ==========
@@ -1102,6 +1267,7 @@ function renderAll() {
   renderResources();
   renderExplore();
   renderMine();
+  renderTools();
   renderCraft();
   renderHandcraft();
   renderSmelt();

@@ -58,6 +58,7 @@ h2 {
 #resources-panel,
 #explore-panel,
 #mine-panel,
+#tools-panel,
 #craft-panel,
 #smelt-panel,
 #factory-panel,
@@ -120,6 +121,7 @@ h2 {
 /* Buttons grid */
 #explore-buttons,
 #mine-buttons,
+#tools-buttons,
 #craft-buttons,
 #smelt-buttons,
 #factory-buttons,
@@ -214,26 +216,38 @@ h2 {
 }
 
 /* Mine buttons */
+.mine-wrapper {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .mine-btn {
   position: relative;
   overflow: hidden;
+  width: 100%;
 }
 
-.mine-btn .mine-flash {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  opacity: 0;
-  pointer-events: none;
+.mine-bar-container {
+  height: 4px;
+  border-radius: 2px;
 }
 
-.mine-btn:active .mine-flash {
-  animation: mineFlash 0.2s ease;
+.mine-bar {
+  background: linear-gradient(to right, #8B5E3C, #a0724a);
+  border-radius: 2px;
 }
 
-@keyframes mineFlash {
-  0% { opacity: 1; }
-  100% { opacity: 0; }
+/* Tool buttons */
+.tool-btn {
+  border-color: #5a4a2e;
+}
+
+.tool-btn .btn-desc {
+  font-size: 0.65rem;
+  color: #666;
 }
 
 /* Craft / smelt buttons */
