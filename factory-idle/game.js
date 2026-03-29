@@ -250,7 +250,7 @@ function renderExplore() {
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container explore-bar-container';
     barContainer.id = `explore-bar-container-${opt.id}`;
-    barContainer.style.display = search.active ? 'block' : 'none';
+    // bar always visible — width handles progress
 
     const bar = document.createElement('div');
     bar.className = 'bar explore-bar';
@@ -275,9 +275,6 @@ function startSearch(opt) {
   // Disable button, show progress bar
   const btn = document.getElementById(`explore-btn-${opt.id}`);
   if (btn) btn.disabled = true;
-  const barContainer = document.getElementById(`explore-bar-container-${opt.id}`);
-  if (barContainer) barContainer.style.display = 'block';
-
   if (!searchTickRunning) {
     searchTickRunning = true;
     requestAnimationFrame(searchTick);
@@ -309,10 +306,7 @@ function searchTick() {
       search.active = false;
       showMessage(`Found ${amount} ${RESOURCES[opt.id].name}!`, 'discover');
 
-      // Reset bar
       if (bar) bar.style.width = '0%';
-      const barContainer = document.getElementById(`explore-bar-container-${opt.id}`);
-      if (barContainer) barContainer.style.display = 'none';
       const btn = document.getElementById(`explore-btn-${opt.id}`);
       if (btn) btn.disabled = false;
 
@@ -379,7 +373,7 @@ function renderMine() {
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container mine-bar-container';
     barContainer.id = `mine-bar-container-${id}`;
-    barContainer.style.display = mining.active ? 'block' : 'none';
+    // bar always visible — width handles progress
 
     const bar = document.createElement('div');
     bar.className = 'bar mine-bar';
@@ -403,9 +397,6 @@ function startMine(id, def) {
 
   const btn = document.getElementById(`mine-btn-${id}`);
   if (btn) btn.disabled = true;
-  const barContainer = document.getElementById(`mine-bar-container-${id}`);
-  if (barContainer) barContainer.style.display = 'block';
-
   if (!mineTickRunning) {
     mineTickRunning = true;
     requestAnimationFrame(mineTick);
@@ -435,8 +426,6 @@ function mineTick() {
       mining.active = false;
 
       if (bar) bar.style.width = '0%';
-      const barContainer = document.getElementById(`mine-bar-container-${id}`);
-      if (barContainer) barContainer.style.display = 'none';
 
       updateResourceCount(id);
       updateCraftButtons();
