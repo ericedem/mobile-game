@@ -331,24 +331,86 @@ h2 {
   margin-top: 12px;
 }
 
-.worker-btn {
-  border-color: #3a5a2e;
-}
-
-.worker-btn .btn-desc {
-  font-size: 0.65rem;
-  color: #666;
-}
-
-.worker-bar-fill {
-  background: linear-gradient(to right, #8bc34a, #558b2f);
-}
-
-#worker-slots {
+/* Worker rows */
+#worker-rows {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
+}
+
+.worker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.worker-row .worker-btn {
+  border-color: #3a5a2e;
+  min-width: 110px;
+  max-width: 110px;
+  flex: none;
+  padding: 8px 10px;
+  gap: 2px;
+}
+
+.worker-row .worker-btn .btn-label {
+  font-size: 0.75rem;
+}
+
+.worker-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  flex: 1;
+  min-height: 36px;
+  align-items: center;
+}
+
+.worker-box {
+  width: 32px;
+  height: 36px;
+  background: #1e1f2e;
+  border: 1px solid #2a2b3e;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  opacity: 0.5;
+}
+
+.worker-box.active {
+  opacity: 1;
+  border-color: #3a5a2e;
+}
+
+.worker-box-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 0.5rem;
+  font-weight: bold;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.worker-box-bar {
+  width: 22px;
+  height: 3px;
+  background: #151620;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.worker-box-fill {
+  height: 100%;
+  background: linear-gradient(to right, #8bc34a, #558b2f);
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.1s linear;
 }
 
 #worker-upgrade-buttons {

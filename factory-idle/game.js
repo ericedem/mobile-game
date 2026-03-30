@@ -214,8 +214,7 @@ const dom = {
   toolsPanel: document.getElementById('tools-panel'),
   toolsButtons: document.getElementById('tools-buttons'),
   workerPanel: document.getElementById('worker-panel'),
-  workerButtons: document.getElementById('worker-buttons'),
-  workerSlots: document.getElementById('worker-slots'),
+  workerRows: document.getElementById('worker-rows'),
   workerUpgradeButtons: document.getElementById('worker-upgrade-buttons'),
   autoMinerPanel: document.getElementById('auto-miner-panel'),
   autoMinerButtons: document.getElementById('auto-miner-buttons'),
@@ -1321,21 +1320,52 @@ function renderWorkers() {
   }
   showPanel(dom.workerPanel);
 
-  // Hire buttons
-  dom.workerButtons.innerHTML = '';
+  // Build one row per worker type: [Hire btn] [mini worker boxes...]
+  dom.workerRows.innerHTML = '';
   for (const w of WORKERS) {
+    const row = document.createElement('div');
+    row.className = 'worker-row';
 
     const btn = document.createElement('button');
     btn.className = 'game-btn worker-btn';
     btn.dataset.workerId = w.id;
     btn.innerHTML = `
-      <span class="btn-label">Hire ${w.name}</span>
+      <span class="btn-label">${w.name}</span>
       <span class="btn-cost">${formatCost(w.cost)}</span>
-      <span class="btn-desc">${w.desc}</span>
     `;
     btn.disabled = !canAfford(w.cost);
     btn.addEventListener('click', () => hireWorker(w));
-    dom.workerButtons.appendChild(btn);
+    row.appendChild(btn);
+
+    // Mini boxes for hired workers of this type
+    const boxes = document.createElement('div');
+    boxes.className = 'worker-boxes';
+    const workers = state.workers.filter(sw => sw.type === w.id);
+    workers.forEach((sw, j) => {
+      const idx = state.workers.indexOf(sw);
+      const box = document.createElement('div');
+      box.className = 'worker-box' + (sw.active ? ' active' : '');
+      box.id = `worker-slot-${idx}`;
+
+      const icon = document.createElement('div');
+      icon.className = 'worker-box-icon';
+      icon.style.background = w.id === 'field_worker' ? '#4caf50' : w.id === 'woodcutter' ? '#8B5E3C' : '#536dfe';
+      icon.textContent = w.id === 'field_worker' ? 'F' : w.id === 'woodcutter' ? 'W' : 'E';
+
+      const bar = document.createElement('div');
+      bar.className = 'worker-box-bar';
+      const fill = document.createElement('div');
+      fill.className = 'worker-box-fill';
+      fill.id = `worker-bar-${idx}`;
+      fill.style.width = '0%';
+      bar.appendChild(fill);
+
+      box.appendChild(icon);
+      box.appendChild(bar);
+      boxes.appendChild(box);
+    });
+    row.appendChild(boxes);
+    dom.workerRows.appendChild(row);
   }
 
   // Worker upgrades
@@ -1355,13 +1385,10 @@ function renderWorkers() {
     btn.addEventListener('click', () => applyWorkerUpgrade(u));
     dom.workerUpgradeButtons.appendChild(btn);
   }
-
-  // Active worker slots
-  renderWorkerSlots();
 }
 
 function updateWorkerButtons() {
-  const buttons = dom.workerButtons.querySelectorAll('.worker-btn');
+  const buttons = dom.workerRows.querySelectorAll('.worker-btn');
   buttons.forEach(btn => {
     const w = WORKERS.find(d => d.id === btn.dataset.workerId);
     if (w) {
@@ -1407,49 +1434,6 @@ function getWorkerInterval(workerDef) {
   return interval;
 }
 
-function renderWorkerSlots() {
-  dom.workerSlots.innerHTML = '';
-  for (let i = 0; i < state.workers.length; i++) {
-    const w = state.workers[i];
-    const def = WORKERS.find(d => d.id === w.type);
-    if (!def) continue;
-
-    const interval = getWorkerInterval(def);
-    const slot = document.createElement('div');
-    slot.className = 'furnace-slot' + (w.active ? ' active' : '');
-    slot.id = `worker-slot-${i}`;
-
-    const label = document.createElement('div');
-    label.className = 'furnace-slot-label';
-    const speed = (state.tools.axe ? 1 : 0) + (state.stoneTools ? 1 : 0);
-    const speedLabel = speed === 2 ? ' (fast)' : speed === 1 ? '' : ' (slow)';
-    label.textContent = `${def.name}${speedLabel}`;
-
-    const statusText = document.createElement('span');
-    statusText.className = 'furnace-slot-status';
-    statusText.id = `worker-status-${i}`;
-    statusText.textContent = w.active ? 'Working...' : 'Out of resources';
-
-    const barContainer = document.createElement('div');
-    barContainer.className = 'bar-container furnace-bar';
-
-    const bar = document.createElement('div');
-    bar.className = 'bar worker-bar-fill';
-    bar.id = `worker-bar-${i}`;
-    bar.style.width = '0%';
-
-    barContainer.appendChild(bar);
-
-    const header = document.createElement('div');
-    header.className = 'furnace-slot-header';
-    header.appendChild(label);
-    header.appendChild(statusText);
-
-    slot.appendChild(header);
-    slot.appendChild(barContainer);
-    dom.workerSlots.appendChild(slot);
-  }
-}
 
 let workerTickRunning = false;
 
@@ -1467,14 +1451,12 @@ function workerTick() {
     const input = { ...def.input };
 
     // Check if we can afford the input
+    const box = document.getElementById(`worker-slot-${i}`);
     if (!w.active) {
       if (canAfford(input)) {
         w.active = true;
         w.lastTick = Date.now();
-        const slot = document.getElementById(`worker-slot-${i}`);
-        if (slot) slot.classList.add('active');
-        const statusEl = document.getElementById(`worker-status-${i}`);
-        if (statusEl) statusEl.textContent = 'Working...';
+        if (box) box.classList.add('active');
       }
       continue;
     }
@@ -1490,10 +1472,7 @@ function workerTick() {
       if (!canAfford(input)) {
         w.active = false;
         if (bar) bar.style.width = '0%';
-        const slot = document.getElementById(`worker-slot-${i}`);
-        if (slot) slot.classList.remove('active');
-        const statusEl = document.getElementById(`worker-status-${i}`);
-        if (statusEl) statusEl.textContent = 'Out of resources';
+        if (box) box.classList.remove('active');
         continue;
       }
 
