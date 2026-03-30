@@ -19,7 +19,7 @@ const RESOURCES = {
 
 // Explore options — timed searches that yield mineable deposits
 const EXPLORE_OPTIONS = [
-  { id: 'food',       name: 'Forage for Food',    time: 1500,  yield: [4, 8],  requiresItem: 'wood' },
+  { id: 'food',       name: 'Forage for Food',    time: 1500,  yield: [4, 8] },
   { id: 'wood',       name: 'Search for Wood',    time: 1500,  yield: [6, 12] },
   { id: 'stone',      name: 'Search for Stone',   time: 2000,  yield: [5, 10], requiresTool: 'axe' },
   { id: 'coal',       name: 'Search for Coal',    time: 3000,  yield: [4, 8],  requiresTool: 'pickaxe' },
@@ -41,7 +41,7 @@ const MINE_TIMES = {
 
 // Tool definitions — one-time crafts that provide permanent bonuses
 const TOOLS = [
-  { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, unlock stone deposits', cost: { wood: 10 }, unlockRequires: 'wood' },
+  { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, workers faster, unlock stone', cost: { wood: 10 }, unlockRequires: 'wood' },
   { id: 'pickaxe', name: 'Stone Pickaxe',   desc: 'Unlock coal, iron, and copper deposits',  cost: { stone: 5, wood: 5 }, unlockRequires: 'stone' },
 ];
 
@@ -52,11 +52,10 @@ const WORKERS = [
     name: 'Field Worker',
     desc: 'Continuously farms food (consumes food slowly)',
     cost: { wood: 5, food: 3 },
-    input: { food: 1 },       // consumed per cycle
+    input: { food: 1 },
     output: 'food',
-    outputQty: 3,             // produced per cycle
-    interval: 5000,
-    requiresTool: 'axe',
+    outputQty: 3,
+    interval: 8000,
   },
   {
     id: 'woodcutter',
@@ -66,8 +65,7 @@ const WORKERS = [
     input: { food: 1 },
     output: 'wood',
     outputQty: 2,
-    interval: 4000,
-    requiresTool: 'axe',
+    interval: 7000,
   },
   {
     id: 'explorer',
@@ -75,10 +73,9 @@ const WORKERS = [
     desc: 'Searches for wood and stone deposits (consumes food)',
     cost: { food: 5 },
     input: { food: 1 },
-    output: null,             // special: adds to deposits instead
+    output: null,
     exploreTargets: ['wood', 'stone'],
-    interval: 6000,
-    requiresTool: 'axe',
+    interval: 10000,
   },
 ];
 
@@ -1345,8 +1342,7 @@ function applyUpgrade(upgrade) {
 // ========== WORKER SYSTEM ==========
 
 function renderWorkers() {
-  const anyUnlocked = WORKERS.some(w => w.requiresTool ? state.tools[w.requiresTool] : true);
-  if (!anyUnlocked) {
+  if (!state.discovered.food && !state.discovered.wood) {
     dom.workerPanel.classList.add('hidden');
     return;
   }
@@ -1355,7 +1351,6 @@ function renderWorkers() {
   // Hire buttons
   dom.workerButtons.innerHTML = '';
   for (const w of WORKERS) {
-    if (w.requiresTool && !state.tools[w.requiresTool]) continue;
 
     const btn = document.createElement('button');
     btn.className = 'game-btn worker-btn';
@@ -1427,7 +1422,10 @@ function applyWorkerUpgrade(upgrade) {
 }
 
 function getWorkerInterval(workerDef) {
-  return state.stoneTools ? Math.floor(workerDef.interval * 0.5) : workerDef.interval;
+  let interval = workerDef.interval;
+  if (state.tools.axe) interval = Math.floor(interval * 0.5);
+  if (state.stoneTools) interval = Math.floor(interval * 0.5);
+  return interval;
 }
 
 function renderWorkerSlots() {
@@ -1444,7 +1442,9 @@ function renderWorkerSlots() {
 
     const label = document.createElement('div');
     label.className = 'furnace-slot-label';
-    label.textContent = `${def.name}${state.stoneTools ? ' (stone tools)' : ''}`;
+    const speed = (state.tools.axe ? 1 : 0) + (state.stoneTools ? 1 : 0);
+    const speedLabel = speed === 2 ? ' (fast)' : speed === 1 ? '' : ' (slow)';
+    label.textContent = `${def.name}${speedLabel}`;
 
     const statusText = document.createElement('span');
     statusText.className = 'furnace-slot-status';
