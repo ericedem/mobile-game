@@ -1,5 +1,6 @@
 // Resource definitions
 const RESOURCES = {
+  food:         { name: 'Food',         color: '#8bc34a', perClick: 1 },
   wood:         { name: 'Wood',         color: '#8B5E3C', perClick: 1 },
   stone:        { name: 'Stone',        color: '#999',    perClick: 1 },
   coal:         { name: 'Coal',         color: '#555',    perClick: 1 },
@@ -18,6 +19,7 @@ const RESOURCES = {
 
 // Explore options — timed searches that yield mineable deposits
 const EXPLORE_OPTIONS = [
+  { id: 'food',       name: 'Forage for Food',    time: 1500,  yield: [4, 8],  requiresItem: 'wood' },
   { id: 'wood',       name: 'Search for Wood',    time: 1500,  yield: [6, 12] },
   { id: 'stone',      name: 'Search for Stone',   time: 2000,  yield: [5, 10], requiresTool: 'axe' },
   { id: 'coal',       name: 'Search for Coal',    time: 3000,  yield: [4, 8],  requiresTool: 'pickaxe' },
@@ -28,6 +30,7 @@ const EXPLORE_OPTIONS = [
 
 // Mining times (ms) per resource — tools can speed things up
 const MINE_TIMES = {
+  food:       { base: 1500 },
   wood:       { base: 2000, withTool: { axe: 1000 } },
   stone:      { base: 2000 },
   coal:       { base: 2500 },
@@ -40,6 +43,54 @@ const MINE_TIMES = {
 const TOOLS = [
   { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, unlock stone deposits', cost: { wood: 10 }, unlockRequires: 'wood' },
   { id: 'pickaxe', name: 'Stone Pickaxe',   desc: 'Unlock coal, iron, and copper deposits',  cost: { stone: 5, wood: 5 }, unlockRequires: 'stone' },
+];
+
+// Worker definitions — continuous auto-running units
+const WORKERS = [
+  {
+    id: 'field_worker',
+    name: 'Field Worker',
+    desc: 'Continuously farms food (consumes food slowly)',
+    cost: { wood: 5, food: 3 },
+    input: { food: 1 },       // consumed per cycle
+    output: 'food',
+    outputQty: 3,             // produced per cycle
+    interval: 5000,
+    unlockRequires: 'food',
+  },
+  {
+    id: 'woodcutter',
+    name: 'Woodcutter',
+    desc: 'Continuously gathers wood (consumes food)',
+    cost: { wood: 3, food: 5 },
+    input: { food: 1 },
+    output: 'wood',
+    outputQty: 2,
+    interval: 4000,
+    unlockRequires: 'food',
+  },
+  {
+    id: 'explorer',
+    name: 'Explorer',
+    desc: 'Searches for wood and stone deposits (consumes food)',
+    cost: { food: 5 },
+    input: { food: 1 },
+    output: null,             // special: adds to deposits instead
+    exploreTargets: ['wood', 'stone'],
+    interval: 6000,
+    unlockRequires: 'food',
+  },
+];
+
+// Stone tools upgrade for workers
+const WORKER_UPGRADES = [
+  {
+    id: 'stone_tools',
+    name: 'Stone Tools',
+    desc: 'Equip all workers with stone tools — workers also consume stone but work 50% faster',
+    cost: { stone: 15 },
+    unlockRequires: 'stone',
+  },
 ];
 
 // Hand-crafting recipes (instant, no machine needed)
@@ -134,6 +185,8 @@ const state = {
   power_plants: [],    // array of { active, recipe, startTime, duration }
   searches: {},        // resource_id: { active, startTime, duration } — active search timers
   mining: {},          // resource_id: { active, startTime, duration } — active mining timers
+  workers: [],         // array of { type, active, lastTick }
+  stoneTools: false,   // whether stone tools upgrade has been applied
   auto_miners: [],     // array of { active, resourceId, startTime, interval, remaining, total }
   drones: [],          // array of { active, optId, startTime, interval, remaining, total }
   collapsed: {},       // panel_id: true/false — accordion collapsed state
@@ -164,6 +217,10 @@ const dom = {
   mineButtons: document.getElementById('mine-buttons'),
   toolsPanel: document.getElementById('tools-panel'),
   toolsButtons: document.getElementById('tools-buttons'),
+  workerPanel: document.getElementById('worker-panel'),
+  workerButtons: document.getElementById('worker-buttons'),
+  workerSlots: document.getElementById('worker-slots'),
+  workerUpgradeButtons: document.getElementById('worker-upgrade-buttons'),
   autoMinerPanel: document.getElementById('auto-miner-panel'),
   autoMinerButtons: document.getElementById('auto-miner-buttons'),
   autoMinerSlots: document.getElementById('auto-miner-slots'),
@@ -1270,6 +1327,208 @@ function applyUpgrade(upgrade) {
   renderAll();
 }
 
+// ========== WORKER SYSTEM ==========
+
+function renderWorkers() {
+  const anyUnlocked = WORKERS.some(w => state.discovered[w.unlockRequires]);
+  if (!anyUnlocked) {
+    dom.workerPanel.classList.add('hidden');
+    return;
+  }
+  showPanel(dom.workerPanel);
+
+  // Hire buttons
+  dom.workerButtons.innerHTML = '';
+  for (const w of WORKERS) {
+    if (w.unlockRequires && !state.discovered[w.unlockRequires]) continue;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn worker-btn';
+    btn.innerHTML = `
+      <span class="btn-label">Hire ${w.name}</span>
+      <span class="btn-cost">${formatCost(w.cost)}</span>
+      <span class="btn-desc">${w.desc}</span>
+    `;
+    btn.disabled = !canAfford(w.cost);
+    btn.addEventListener('click', () => hireWorker(w));
+    dom.workerButtons.appendChild(btn);
+  }
+
+  // Worker upgrades
+  dom.workerUpgradeButtons.innerHTML = '';
+  for (const u of WORKER_UPGRADES) {
+    if (u.unlockRequires && !state.discovered[u.unlockRequires]) continue;
+    if (u.id === 'stone_tools' && state.stoneTools) continue;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn upgrade-btn';
+    btn.innerHTML = `
+      <span class="btn-label">${u.name}</span>
+      <span class="btn-cost">${formatCost(u.cost)}</span>
+      <span class="btn-desc">${u.desc}</span>
+    `;
+    btn.disabled = !canAfford(u.cost);
+    btn.addEventListener('click', () => applyWorkerUpgrade(u));
+    dom.workerUpgradeButtons.appendChild(btn);
+  }
+
+  // Active worker slots
+  renderWorkerSlots();
+}
+
+function hireWorker(workerDef) {
+  if (!canAfford(workerDef.cost)) return;
+
+  for (const [r, n] of Object.entries(workerDef.cost)) {
+    state.resources[r] -= n;
+  }
+
+  state.workers.push({
+    type: workerDef.id,
+    active: true,
+    lastTick: Date.now(),
+  });
+
+  showMessage(`Hired ${workerDef.name}!`, 'success');
+  renderAll();
+
+  if (!workerTickRunning) {
+    workerTickRunning = true;
+    requestAnimationFrame(workerTick);
+  }
+}
+
+function applyWorkerUpgrade(upgrade) {
+  if (!canAfford(upgrade.cost)) return;
+  for (const [r, n] of Object.entries(upgrade.cost)) {
+    state.resources[r] -= n;
+  }
+
+  if (upgrade.id === 'stone_tools') {
+    state.stoneTools = true;
+    showMessage('Workers equipped with stone tools! 50% faster but consume stone.', 'success');
+  }
+  renderAll();
+}
+
+function getWorkerInterval(workerDef) {
+  return state.stoneTools ? Math.floor(workerDef.interval * 0.5) : workerDef.interval;
+}
+
+function renderWorkerSlots() {
+  dom.workerSlots.innerHTML = '';
+  for (let i = 0; i < state.workers.length; i++) {
+    const w = state.workers[i];
+    const def = WORKERS.find(d => d.id === w.type);
+    if (!def) continue;
+
+    const interval = getWorkerInterval(def);
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot' + (w.active ? ' active' : '');
+    slot.id = `worker-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `${def.name}${state.stoneTools ? ' (stone tools)' : ''}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `worker-status-${i}`;
+    statusText.textContent = w.active ? 'Working...' : 'Out of resources';
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar worker-bar-fill';
+    bar.id = `worker-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.workerSlots.appendChild(slot);
+  }
+}
+
+let workerTickRunning = false;
+
+function workerTick() {
+  if (state.workers.length === 0) { workerTickRunning = false; return; }
+
+  for (let i = 0; i < state.workers.length; i++) {
+    const w = state.workers[i];
+    const def = WORKERS.find(d => d.id === w.type);
+    if (!def) continue;
+
+    const interval = getWorkerInterval(def);
+
+    // Build input cost for this cycle
+    const input = { ...def.input };
+    if (state.stoneTools) input.stone = (input.stone || 0) + 1;
+
+    // Check if we can afford the input
+    if (!w.active) {
+      if (canAfford(input)) {
+        w.active = true;
+        w.lastTick = Date.now();
+        const slot = document.getElementById(`worker-slot-${i}`);
+        if (slot) slot.classList.add('active');
+        const statusEl = document.getElementById(`worker-status-${i}`);
+        if (statusEl) statusEl.textContent = 'Working...';
+      }
+      continue;
+    }
+
+    const elapsed = Date.now() - w.lastTick;
+    const pct = Math.min(100, (elapsed / interval) * 100);
+
+    const bar = document.getElementById(`worker-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= interval) {
+      // Consume inputs
+      if (!canAfford(input)) {
+        w.active = false;
+        if (bar) bar.style.width = '0%';
+        const slot = document.getElementById(`worker-slot-${i}`);
+        if (slot) slot.classList.remove('active');
+        const statusEl = document.getElementById(`worker-status-${i}`);
+        if (statusEl) statusEl.textContent = 'Out of resources';
+        continue;
+      }
+
+      for (const [r, n] of Object.entries(input)) {
+        state.resources[r] -= n;
+      }
+
+      // Produce output
+      if (def.output) {
+        state.resources[def.output] += def.outputQty;
+        state.discovered[def.output] = true;
+      } else if (def.exploreTargets) {
+        // Explorer: add deposits to a random target
+        const target = def.exploreTargets[Math.floor(Math.random() * def.exploreTargets.length)];
+        const amount = 2 + Math.floor(Math.random() * 4);
+        state.deposits[target] += amount;
+        state.discovered[target] = true;
+      }
+
+      w.lastTick = Date.now();
+      renderResources();
+      renderMine();
+    }
+  }
+
+  requestAnimationFrame(workerTick);
+}
+
 // ========== AUTO MINER SYSTEM ==========
 
 const AUTO_MINER_ITERATIONS = 15;
@@ -1612,26 +1871,6 @@ function applyCollapsed(panelId) {
   }
 }
 
-function autoCollapse() {
-  // Collapse explore when player has deposits to mine
-  const hasDeposits = Object.values(state.deposits).some(d => d > 0);
-  if (hasDeposits && !state.revealed['explore-auto-collapsed']) {
-    state.revealed['explore-auto-collapsed'] = true;
-    state.collapsed['explore-panel'] = true;
-  }
-
-  // Collapse tools when all tools crafted
-  if (TOOLS.every(t => state.tools[t.id]) && !state.revealed['tools-auto-collapsed']) {
-    state.revealed['tools-auto-collapsed'] = true;
-    state.collapsed['tools-panel'] = true;
-  }
-
-  // Apply all collapsed states
-  for (const panelId of Object.keys(state.collapsed)) {
-    applyCollapsed(panelId);
-  }
-}
-
 function setupAccordionHeaders() {
   const panels = document.querySelectorAll('#game > div[id$="-panel"]');
   panels.forEach(panel => {
@@ -1665,6 +1904,7 @@ function renderAll() {
   renderExplore();
   renderMine();
   renderTools();
+  renderWorkers();
   renderAutoMiners();
   renderDrones();
   renderCraft();
@@ -1673,9 +1913,13 @@ function renderAll() {
   renderFactory();
   renderPower();
   renderUpgrade();
-  autoCollapse();
 }
 
 // Init
 setupAccordionHeaders();
 renderAll();
+// Start worker tick if there are workers
+if (state.workers.length > 0 && !workerTickRunning) {
+  workerTickRunning = true;
+  requestAnimationFrame(workerTick);
+}

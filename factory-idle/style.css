@@ -90,6 +90,7 @@ h2:active {
 #explore-panel,
 #mine-panel,
 #tools-panel,
+#worker-panel,
 #auto-miner-panel,
 #drone-panel,
 #craft-panel,
@@ -164,6 +165,8 @@ h2:active {
 #explore-buttons,
 #mine-buttons,
 #tools-buttons,
+#worker-buttons,
+#worker-upgrade-buttons,
 #auto-miner-buttons,
 #drone-buttons,
 #craft-buttons,
@@ -352,6 +355,30 @@ h2:active {
   flex-direction: column;
   gap: 8px;
   margin-top: 12px;
+}
+
+.worker-btn {
+  border-color: #3a5a2e;
+}
+
+.worker-btn .btn-desc {
+  font-size: 0.65rem;
+  color: #666;
+}
+
+.worker-bar-fill {
+  background: linear-gradient(to right, #8bc34a, #558b2f);
+}
+
+#worker-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#worker-upgrade-buttons {
+  margin-top: 8px;
 }
 
 .auto-miner-btn {
