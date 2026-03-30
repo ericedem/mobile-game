@@ -87,7 +87,7 @@ const WORKER_UPGRADES = [
   {
     id: 'stone_tools',
     name: 'Stone Tools',
-    desc: 'Equip all workers with stone tools — workers also consume stone but work 50% faster',
+    desc: 'Equip all workers with stone tools — workers work 50% faster',
     cost: { stone: 15 },
     unlockRequires: 'stone',
   },
@@ -1406,7 +1406,7 @@ function applyWorkerUpgrade(upgrade) {
 
   if (upgrade.id === 'stone_tools') {
     state.stoneTools = true;
-    showMessage('Workers equipped with stone tools! 50% faster but consume stone.', 'success');
+    showMessage('Workers equipped with stone tools! 50% faster.', 'success');
   }
   renderAll();
 }
@@ -1471,7 +1471,6 @@ function workerTick() {
 
     // Build input cost for this cycle
     const input = { ...def.input };
-    if (state.stoneTools) input.stone = (input.stone || 0) + 1;
 
     // Check if we can afford the input
     if (!w.active) {
