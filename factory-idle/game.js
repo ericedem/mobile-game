@@ -577,11 +577,8 @@ function renderTools() {
 }
 
 function craftTool(tool) {
-  if (!canAfford(tool.cost) || state.tools[tool.id]) return;
-
-  for (const [r, n] of Object.entries(tool.cost)) {
-    state.resources[r] -= n;
-  }
+  if (state.tools[tool.id]) return;
+  if (!consumeResources(tool.cost)) return;
   state.tools[tool.id] = true;
 
   showMessage(`Crafted ${tool.name}!`, 'success');
@@ -648,11 +645,14 @@ function formatCost(cost, separator) {
     .join(separator || ', ');
 }
 
+function consumeResources(cost) {
+  if (!canAfford(cost)) return false;
+  for (const [r, n] of Object.entries(cost)) state.resources[r] -= n;
+  return true;
+}
+
 function buildCraft(craft) {
-  if (!canAfford(craft.cost)) return;
-  for (const [r, n] of Object.entries(craft.cost)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(craft.cost)) return;
   state.structures[craft.id] = (state.structures[craft.id] || 0) + 1;
   if (craft.id === 'furnace') {
     state.furnaces.push({ active: false, recipe: null, startTime: 0, duration: 0, electric: false });
@@ -753,10 +753,6 @@ function updateSmeltButtons() {
   renderSmeltButtons();
 }
 
-function getIdleFurnaceCount() {
-  return state.furnaces.filter(f => !f.active).length;
-}
-
 // --- Furnace slots display ---
 function renderFurnaceSlots() {
   dom.furnaceSlots.innerHTML = '';
@@ -800,12 +796,7 @@ function renderFurnaceSlots() {
 function startSmelt(recipe, electric = false) {
   const furnaceIndex = state.furnaces.findIndex(f => !f.active && f.electric === electric);
   if (furnaceIndex === -1) return;
-  if (!canAfford(recipe.input)) return;
-
-  // Consume inputs
-  for (const [r, n] of Object.entries(recipe.input)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(recipe.input)) return;
 
   const furnace = state.furnaces[furnaceIndex];
   furnace.active = true;
@@ -908,11 +899,7 @@ function renderHandcraft() {
 }
 
 function handcraft(recipe, event) {
-  if (!canAfford(recipe.input)) return;
-
-  for (const [r, n] of Object.entries(recipe.input)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(recipe.input)) return;
   state.resources[recipe.output] += recipe.outputQty;
   state.discovered[recipe.output] = true;
 
@@ -1006,10 +993,6 @@ function updateFactoryButtons() {
   renderFactoryButtons();
 }
 
-function getIdleFactoryCount() {
-  return state.factories.filter(f => !f.active).length;
-}
-
 function renderFactorySlots() {
   dom.factorySlots.innerHTML = '';
   for (let i = 0; i < state.factories.length; i++) {
@@ -1051,11 +1034,7 @@ function renderFactorySlots() {
 function startFactory(recipe, electric = false) {
   const factoryIndex = state.factories.findIndex(f => !f.active && f.electric === electric);
   if (factoryIndex === -1) return;
-  if (!canAfford(recipe.input)) return;
-
-  for (const [r, n] of Object.entries(recipe.input)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(recipe.input)) return;
 
   const factory = state.factories[factoryIndex];
   factory.active = true;
@@ -1113,6 +1092,7 @@ function factoryTick() {
       renderResources();
       updateFactoryButtons();
       renderCraft();
+      renderHandcraft();
       renderUpgrade();
     } else {
       anyActive = true;
@@ -1150,10 +1130,6 @@ function renderPower() {
     powerTickRunning = true;
     requestAnimationFrame(powerTick);
   }
-}
-
-function updatePowerButtons() {
-  // No buttons to update — plants auto-run
 }
 
 function renderPowerSlots() {
@@ -1312,8 +1288,6 @@ function renderUpgrade() {
 }
 
 function applyUpgrade(upgrade) {
-  if (!canAfford(upgrade.cost)) return;
-
   let slotIndex = -1;
   if (upgrade.target === 'furnace') {
     slotIndex = state.furnaces.findIndex(f => !f.electric && !f.active);
@@ -1323,10 +1297,7 @@ function applyUpgrade(upgrade) {
     if (slotIndex === -1) return;
   }
 
-  // Pay cost
-  for (const [r, n] of Object.entries(upgrade.cost)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(upgrade.cost)) return;
 
   // Apply upgrade
   if (upgrade.target === 'furnace') {
@@ -1388,11 +1359,7 @@ function renderWorkers() {
 }
 
 function hireWorker(workerDef) {
-  if (!canAfford(workerDef.cost)) return;
-
-  for (const [r, n] of Object.entries(workerDef.cost)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(workerDef.cost)) return;
 
   state.workers.push({
     type: workerDef.id,
@@ -1410,10 +1377,7 @@ function hireWorker(workerDef) {
 }
 
 function applyWorkerUpgrade(upgrade) {
-  if (!canAfford(upgrade.cost)) return;
-  for (const [r, n] of Object.entries(upgrade.cost)) {
-    state.resources[r] -= n;
-  }
+  if (!consumeResources(upgrade.cost)) return;
 
   if (upgrade.id === 'stone_tools') {
     state.stoneTools = true;
