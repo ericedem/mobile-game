@@ -269,14 +269,27 @@ function showFloat(text, x, y) {
 }
 
 // --- Render resources ---
+// Track which resource badges exist to avoid full rebuilds
+const resourceBadges = {};
+
 function renderResources() {
-  dom.resourcesList.innerHTML = '';
-  let anyDiscovered = false;
   for (const [id, def] of Object.entries(RESOURCES)) {
     if (!state.discovered[id]) continue;
-    anyDiscovered = true;
+
+    // Remove the "no resources" placeholder if present
+    const placeholder = dom.resourcesList.querySelector('.res-placeholder');
+    if (placeholder) placeholder.remove();
+
+    if (resourceBadges[id]) {
+      // Badge exists — just update values
+      updateResourceCount(id);
+      continue;
+    }
+
+    // Create new badge
     const badge = document.createElement('div');
     badge.className = 'resource-badge';
+    badge.id = `res-badge-${id}`;
     const depositInfo = def.perClick > 0 ? `<span class="resource-deposit" id="res-deposit-${id}">${state.deposits[id]} in deposit</span>` : '';
     badge.innerHTML = `
       <div class="resource-icon" style="background:${def.color}"></div>
@@ -287,9 +300,12 @@ function renderResources() {
       <span class="resource-count" id="res-count-${id}">${state.resources[id]}</span>
     `;
     dom.resourcesList.appendChild(badge);
+    resourceBadges[id] = true;
   }
-  if (!anyDiscovered) {
-    dom.resourcesList.innerHTML = '<span style="color:#555;font-size:0.85rem;">No resources discovered yet. Search to find some!</span>';
+
+  // Show placeholder only if nothing discovered
+  if (!Object.values(state.discovered).some(d => d) && !dom.resourcesList.querySelector('.res-placeholder')) {
+    dom.resourcesList.innerHTML = '<span class="res-placeholder" style="color:#555;font-size:0.85rem;grid-column:1/-1;">No resources discovered yet. Search to find some!</span>';
   }
 }
 
