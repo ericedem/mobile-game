@@ -50,9 +50,9 @@ const WORKERS = [
   {
     id: 'field_worker',
     name: 'Field Worker',
-    desc: 'Continuously farms food (consumes food slowly)',
+    desc: 'Continuously farms food',
     cost: { wood: 5, food: 3 },
-    input: { food: 1 },
+    input: {},
     output: 'food',
     outputQty: 3,
     interval: 8000,
