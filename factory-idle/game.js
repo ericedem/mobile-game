@@ -304,15 +304,6 @@ function renderResources() {
     dom.resourcesList.innerHTML = '<span class="res-placeholder" style="color:#555;font-size:0.85rem;grid-column:1/-1;">No resources discovered yet. Search to find some!</span>';
   }
 
-  // Update all button affordability when resources change
-  updateAllButtons();
-}
-
-function updateAllButtons() {
-  updateWorkerButtons();
-  updateToolButtons();
-  updateCraftButtons();
-  updateSmeltButtons();
 }
 
 function updateResourceCount(id) {
@@ -1877,3 +1868,11 @@ if (state.workers.length > 0 && !workerTickRunning) {
   workerTickRunning = true;
   requestAnimationFrame(workerTick);
 }
+
+// Poll button affordability every 200ms so UI never goes stale
+setInterval(() => {
+  updateWorkerButtons();
+  updateToolButtons();
+  updateCraftButtons();
+  updateSmeltButtons();
+}, 200);
