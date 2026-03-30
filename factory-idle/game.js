@@ -403,6 +403,7 @@ function searchTick() {
       renderResources();
       renderMine();
       renderTools();
+      renderWorkers();
       renderCraft();
     } else {
       anyActive = true;
