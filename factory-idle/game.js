@@ -303,6 +303,16 @@ function renderResources() {
   if (!Object.values(state.discovered).some(d => d) && !dom.resourcesList.querySelector('.res-placeholder')) {
     dom.resourcesList.innerHTML = '<span class="res-placeholder" style="color:#555;font-size:0.85rem;grid-column:1/-1;">No resources discovered yet. Search to find some!</span>';
   }
+
+  // Update all button affordability when resources change
+  updateAllButtons();
+}
+
+function updateAllButtons() {
+  updateWorkerButtons();
+  updateToolButtons();
+  updateCraftButtons();
+  updateSmeltButtons();
 }
 
 function updateResourceCount(id) {
@@ -1326,6 +1336,7 @@ function renderWorkers() {
 
     const btn = document.createElement('button');
     btn.className = 'game-btn worker-btn';
+    btn.dataset.workerId = w.id;
     btn.innerHTML = `
       <span class="btn-label">Hire ${w.name}</span>
       <span class="btn-cost">${formatCost(w.cost)}</span>
@@ -1356,6 +1367,18 @@ function renderWorkers() {
 
   // Active worker slots
   renderWorkerSlots();
+}
+
+function updateWorkerButtons() {
+  const buttons = dom.workerButtons.querySelectorAll('.worker-btn');
+  buttons.forEach(btn => {
+    const w = WORKERS.find(d => d.id === btn.dataset.workerId);
+    if (w) {
+      btn.disabled = !canAfford(w.cost);
+      const costSpan = btn.querySelector('.btn-cost');
+      if (costSpan) costSpan.innerHTML = formatCost(w.cost);
+    }
+  });
 }
 
 function hireWorker(workerDef) {
