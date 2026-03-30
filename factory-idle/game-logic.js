@@ -40,7 +40,7 @@ const MINE_TIMES = {
 };
 
 const TOOLS = [
-  { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, workers faster, unlock stone', cost: { wood: 10 }, unlockRequires: 'wood' },
+  { id: 'axe',     name: 'Wooden Axe',     desc: 'Mine wood faster, workers faster, unlock stone', cost: { food: 20 }, unlockRequires: 'wood' },
   { id: 'pickaxe', name: 'Stone Pickaxe',   desc: 'Unlock coal, iron, and copper deposits',  cost: { stone: 5, wood: 5 }, unlockRequires: 'stone' },
 ];
 
@@ -54,6 +54,9 @@ const WORKERS = [
     output: 'food',
     outputQty: 3,
     interval: 8000,
+    max: 2,
+    unlockCost: { food: 10 },
+    unlockDesc: 'Unlock Field Workers',
   },
   {
     id: 'woodcutter',
@@ -64,6 +67,8 @@ const WORKERS = [
     output: 'wood',
     outputQty: 2,
     interval: 7000,
+    max: 2,
+    requiresTool: 'axe',
   },
   {
     id: 'explorer',
@@ -74,6 +79,7 @@ const WORKERS = [
     output: null,
     exploreTargets: ['wood', 'stone'],
     interval: 10000,
+    requiresTool: 'axe',
   },
 ];
 
@@ -176,7 +182,9 @@ function createInitialState() {
     searches: {},
     mining: {},
     workers: [],
+    unlockedWorkers: {},  // worker_id: true — tracks which worker types have been unlocked
     stoneTools: false,
+    activeAction: null,   // { type: 'mine'|'search', id: string } — current auto-repeat action
     auto_miners: [],
     drones: [],
     revealed: {},
