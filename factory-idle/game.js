@@ -128,12 +128,23 @@ function renderExplore() {
     const btn = document.createElement('button');
     btn.className = 'game-btn explore-btn';
     btn.id = `explore-btn-${opt.id}`;
-    btn.disabled = search.active;
-    btn.innerHTML = `
-      <span class="btn-label">${opt.name}</span>
-      <span class="btn-cost">${(opt.time / 1000).toFixed(0)}s search</span>
-    `;
-    btn.addEventListener('click', () => startSearch(opt));
+    const isThisActive = state.activeAction && state.activeAction.type === 'search' && state.activeAction.id === opt.id;
+    btn.disabled = (state.activeAction !== null && !isThisActive);
+    if (isThisActive) {
+      btn.innerHTML = `
+        <span class="btn-label">Stop ${opt.name}</span>
+        <span class="btn-cost">repeating · ${(opt.time / 1000).toFixed(0)}s</span>
+      `;
+      btn.disabled = false;
+      btn.classList.add('active-action');
+      btn.addEventListener('click', () => { cancelActiveAction(); renderExplore(); renderMine(); });
+    } else {
+      btn.innerHTML = `
+        <span class="btn-label">${opt.name}</span>
+        <span class="btn-cost">${(opt.time / 1000).toFixed(0)}s search</span>
+      `;
+      btn.addEventListener('click', () => startSearch(opt));
+    }
 
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container explore-bar-container';
@@ -156,17 +167,41 @@ function startSearch(opt) {
   const search = state.searches[opt.id];
   if (search.active) return;
 
+  // Cancel any other active action
+  cancelActiveAction();
+
   search.active = true;
   search.startTime = Date.now();
   search.duration = opt.time;
+  state.activeAction = { type: 'search', id: opt.id };
 
-  // Disable button, show progress bar
-  const btn = document.getElementById(`explore-btn-${opt.id}`);
-  if (btn) btn.disabled = true;
+  renderExplore();
+  renderMine();
   if (!searchTickRunning) {
     searchTickRunning = true;
     requestAnimationFrame(searchTick);
   }
+}
+
+function cancelActiveAction() {
+  if (!state.activeAction) return;
+  const prev = state.activeAction;
+  if (prev.type === 'search') {
+    const search = state.searches[prev.id];
+    if (search) {
+      search.active = false;
+      const bar = document.getElementById(`explore-bar-${prev.id}`);
+      if (bar) bar.style.width = '0%';
+    }
+  } else if (prev.type === 'mine') {
+    const mining = state.mining[prev.id];
+    if (mining) {
+      mining.active = false;
+      const bar = document.getElementById(`mine-bar-${prev.id}`);
+      if (bar) bar.style.width = '0%';
+    }
+  }
+  state.activeAction = null;
 }
 
 let searchTickRunning = false;
@@ -191,12 +226,12 @@ function searchTick() {
       state.deposits[opt.id] += amount;
       state.discovered[opt.id] = true;
 
-      search.active = false;
       showMessage(`Found ${amount} ${RESOURCES[opt.id].name}!`, 'discover');
 
+      // Auto-repeat: restart the search
+      search.startTime = Date.now();
       if (bar) bar.style.width = '0%';
-      const btn = document.getElementById(`explore-btn-${opt.id}`);
-      if (btn) btn.disabled = false;
+      anyActive = true;
 
       renderResources();
       renderMine();
@@ -251,13 +286,24 @@ function renderMine() {
     const btn = document.createElement('button');
     btn.className = 'game-btn mine-btn';
     btn.id = `mine-btn-${id}`;
-    btn.disabled = state.deposits[id] <= 0 || mining.active;
-    btn.innerHTML = `
-      <div class="btn-icon" style="background:${def.color}"></div>
-      <span class="btn-label">Mine ${def.name}</span>
-      <span class="btn-cost">${state.deposits[id]} remaining · ${(mineTime / 1000).toFixed(1)}s</span>
-    `;
-    btn.addEventListener('click', () => startMine(id, def));
+    const isThisMining = state.activeAction && state.activeAction.type === 'mine' && state.activeAction.id === id;
+    if (isThisMining) {
+      btn.innerHTML = `
+        <div class="btn-icon" style="background:${def.color}"></div>
+        <span class="btn-label">Stop Mining ${def.name}</span>
+        <span class="btn-cost">${state.deposits[id]} remaining · ${(mineTime / 1000).toFixed(1)}s</span>
+      `;
+      btn.classList.add('active-action');
+      btn.addEventListener('click', () => { cancelActiveAction(); renderExplore(); renderMine(); });
+    } else {
+      btn.disabled = state.deposits[id] <= 0 || state.activeAction !== null;
+      btn.innerHTML = `
+        <div class="btn-icon" style="background:${def.color}"></div>
+        <span class="btn-label">Mine ${def.name}</span>
+        <span class="btn-cost">${state.deposits[id]} remaining · ${(mineTime / 1000).toFixed(1)}s</span>
+      `;
+      btn.addEventListener('click', () => startMine(id, def));
+    }
 
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container mine-bar-container';
@@ -280,12 +326,16 @@ function startMine(id, def) {
   const mining = state.mining[id];
   if (mining.active || state.deposits[id] <= 0) return;
 
+  // Cancel any other active action
+  cancelActiveAction();
+
   mining.active = true;
   mining.startTime = Date.now();
   mining.duration = getMineTime(id);
+  state.activeAction = { type: 'mine', id };
 
-  const btn = document.getElementById(`mine-btn-${id}`);
-  if (btn) btn.disabled = true;
+  renderExplore();
+  renderMine();
   if (!mineTickRunning) {
     mineTickRunning = true;
     requestAnimationFrame(mineTick);
@@ -312,16 +362,21 @@ function mineTick() {
       // Mining complete
       state.deposits[id] -= def.perClick;
       state.resources[id] += def.perClick;
-      mining.active = false;
 
       if (bar) bar.style.width = '0%';
 
       updateResourceCount(id);
-      updateCraftButtons();
-      updateToolButtons();
-      updateHandcraftButtons();
-      updateSmeltButtons();
-      updateFactoryButtons();
+
+      // Auto-repeat if deposits remain
+      if (state.deposits[id] > 0) {
+        mining.startTime = Date.now();
+        mining.duration = getMineTime(id);
+        anyActive = true;
+      } else {
+        mining.active = false;
+        state.activeAction = null;
+        renderExplore();
+      }
 
       // Update mine button
       const btn = document.getElementById(`mine-btn-${id}`);
@@ -1118,28 +1173,48 @@ function renderWorkers() {
   }
   showPanel(dom.workerPanel);
 
-  // Build one row per worker type: [Hire btn] [mini worker boxes...]
+  // Build one row per worker type: [Unlock/Hire btn] [mini worker boxes...]
   dom.workerRows.innerHTML = '';
   for (const w of WORKERS) {
+    // Skip if requires a tool the player doesn't have
+    if (w.requiresTool && !state.tools[w.requiresTool]) continue;
+
     const row = document.createElement('div');
     row.className = 'worker-row';
 
-    const btn = document.createElement('button');
-    btn.className = 'game-btn worker-btn';
-    btn.dataset.workerId = w.id;
-    btn.innerHTML = `
-      <span class="btn-label">${w.name}</span>
-      <span class="btn-cost">${formatCost(w.cost)}</span>
-    `;
-    btn.disabled = !canAfford(w.cost);
-    btn.addEventListener('click', () => hireWorker(w));
-    row.appendChild(btn);
+    const hiredCount = state.workers.filter(sw => sw.type === w.id).length;
+    const atMax = w.max && hiredCount >= w.max;
+
+    // Show unlock button if this worker type needs unlocking
+    if (w.unlockCost && !state.unlockedWorkers[w.id]) {
+      const btn = document.createElement('button');
+      btn.className = 'game-btn worker-btn unlock-btn';
+      btn.dataset.workerId = w.id;
+      btn.innerHTML = `
+        <span class="btn-label">${w.unlockDesc || 'Unlock ' + w.name}</span>
+        <span class="btn-cost">${formatCost(w.unlockCost)}</span>
+      `;
+      btn.disabled = !canAfford(w.unlockCost);
+      btn.addEventListener('click', () => unlockWorker(w));
+      row.appendChild(btn);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'game-btn worker-btn';
+      btn.dataset.workerId = w.id;
+      btn.innerHTML = `
+        <span class="btn-label">${w.name}${atMax ? ' (max)' : ''}</span>
+        <span class="btn-cost">${formatCost(w.cost)}</span>
+      `;
+      btn.disabled = atMax || !canAfford(w.cost);
+      btn.addEventListener('click', () => hireWorker(w));
+      row.appendChild(btn);
+    }
 
     // Mini boxes for hired workers of this type
     const boxes = document.createElement('div');
     boxes.className = 'worker-boxes';
     const workers = state.workers.filter(sw => sw.type === w.id);
-    workers.forEach((sw, j) => {
+    workers.forEach((sw) => {
       const idx = state.workers.indexOf(sw);
       const box = document.createElement('div');
       box.className = 'worker-box' + (sw.active ? ' active' : '');
@@ -1185,12 +1260,26 @@ function renderWorkers() {
   }
 }
 
+function unlockWorker(workerDef) {
+  if (!consumeResources(workerDef.unlockCost)) return;
+  state.unlockedWorkers[workerDef.id] = true;
+  showMessage(`Unlocked ${workerDef.name}!`, 'success');
+  renderAll();
+}
+
 function updateWorkerButtons() {
   const buttons = dom.workerRows.querySelectorAll('.worker-btn');
   buttons.forEach(btn => {
     const w = WORKERS.find(d => d.id === btn.dataset.workerId);
-    if (w) {
-      btn.disabled = !canAfford(w.cost);
+    if (!w) return;
+    if (btn.classList.contains('unlock-btn')) {
+      btn.disabled = !canAfford(w.unlockCost);
+      const costSpan = btn.querySelector('.btn-cost');
+      if (costSpan) costSpan.innerHTML = formatCost(w.unlockCost);
+    } else {
+      const hiredCount = state.workers.filter(sw => sw.type === w.id).length;
+      const atMax = w.max && hiredCount >= w.max;
+      btn.disabled = atMax || !canAfford(w.cost);
       const costSpan = btn.querySelector('.btn-cost');
       if (costSpan) costSpan.innerHTML = formatCost(w.cost);
     }
@@ -1198,6 +1287,11 @@ function updateWorkerButtons() {
 }
 
 function hireWorker(workerDef) {
+  // Check max limit
+  if (workerDef.max) {
+    const count = state.workers.filter(w => w.type === workerDef.id).length;
+    if (count >= workerDef.max) return;
+  }
   if (!consumeResources(workerDef.cost)) return;
 
   state.workers.push({

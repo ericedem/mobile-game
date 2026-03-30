@@ -77,9 +77,10 @@ describe('EXPLORE_OPTIONS', () => {
 });
 
 describe('TOOLS', () => {
-  it('axe costs only wood', () => {
+  it('axe costs food', () => {
     const axe = TOOLS.find(t => t.id === 'axe');
-    assert.deepStrictEqual(Object.keys(axe.cost), ['wood']);
+    assert.deepStrictEqual(Object.keys(axe.cost), ['food']);
+    assert.strictEqual(axe.cost.food, 20);
   });
 
   it('pickaxe costs stone and wood', () => {
@@ -118,6 +119,27 @@ describe('WORKERS', () => {
     const ex = WORKERS.find(w => w.id === 'explorer');
     assert.strictEqual(ex.output, null);
     assert.ok(ex.exploreTargets.length > 0);
+  });
+
+  it('field worker has max of 2', () => {
+    const fw = WORKERS.find(w => w.id === 'field_worker');
+    assert.strictEqual(fw.max, 2);
+  });
+
+  it('woodcutter has max of 2 and requires axe', () => {
+    const wc = WORKERS.find(w => w.id === 'woodcutter');
+    assert.strictEqual(wc.max, 2);
+    assert.strictEqual(wc.requiresTool, 'axe');
+  });
+
+  it('field worker requires 10 food to unlock', () => {
+    const fw = WORKERS.find(w => w.id === 'field_worker');
+    assert.deepStrictEqual(fw.unlockCost, { food: 10 });
+  });
+
+  it('explorer requires axe', () => {
+    const ex = WORKERS.find(w => w.id === 'explorer');
+    assert.strictEqual(ex.requiresTool, 'axe');
   });
 });
 
@@ -245,6 +267,16 @@ describe('createInitialState', () => {
     const s2 = createInitialState();
     s1.resources.food = 99;
     assert.strictEqual(s2.resources.food, 0);
+  });
+
+  it('initializes unlockedWorkers as empty object', () => {
+    const s = createInitialState();
+    assert.deepStrictEqual(s.unlockedWorkers, {});
+  });
+
+  it('initializes activeAction as null', () => {
+    const s = createInitialState();
+    assert.strictEqual(s.activeAction, null);
   });
 });
 
@@ -374,10 +406,10 @@ describe('getWorkerInterval', () => {
 // ========== Game progression tests ==========
 
 describe('game progression', () => {
-  it('can afford axe after gathering 10 wood', () => {
+  it('can afford axe after gathering 20 food', () => {
     const s = createInitialState();
     const axe = TOOLS.find(t => t.id === 'axe');
-    s.resources.wood = 10;
+    s.resources.food = 20;
     assert.ok(canAfford(s, axe.cost));
   });
 

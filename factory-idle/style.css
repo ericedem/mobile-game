@@ -184,6 +184,15 @@ h2 {
   transform: none;
 }
 
+.game-btn.active-action {
+  border-color: #f0a030;
+  box-shadow: 0 0 8px rgba(240, 160, 48, 0.25);
+}
+
+.game-btn.unlock-btn {
+  border-color: #4a4a1e;
+}
+
 .game-btn .btn-label {
   font-size: 0.9rem;
 }
