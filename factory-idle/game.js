@@ -66,8 +66,8 @@ const CRAFTS = [
   },
   {
     id: 'power_plant',
-    name: 'Power Plant',
-    desc: 'Convert coal into power',
+    name: 'Coal Power Plant',
+    desc: 'Continuously convert coal into power',
     cost: { circuit: 5, copper_wire: 10, copper_bar: 5, iron_bar: 5 },
     unlockRequires: 'circuit',
   },
@@ -592,6 +592,11 @@ function buildCraft(craft) {
   }
   if (craft.id === 'power_plant') {
     state.power_plants.push({ active: false, recipe: null, startTime: 0, duration: 0 });
+    // Start auto-loop if not running
+    if (!powerTickRunning) {
+      powerTickRunning = true;
+      requestAnimationFrame(powerTick);
+    }
   }
   showMessage(`Built ${craft.name}! (${state.structures[craft.id]} total)`, 'success');
   renderAll();
@@ -1060,32 +1065,25 @@ function renderPower() {
   }
   showPanel(dom.powerPanel);
 
-  renderPowerButtons();
+  // Show recipe info (no start button — plants auto-run)
+  const recipe = POWER_RECIPES[0];
+  dom.powerButtons.innerHTML = `
+    <div style="font-size:0.8rem;color:#888;margin-bottom:4px;">
+      Each plant continuously converts ${formatCost(recipe.input, ' + ')} → ${recipe.outputQty} ${RESOURCES[recipe.output].name} every ${(recipe.time / 1000).toFixed(0)}s
+    </div>
+  `;
+
   renderPowerSlots();
-}
 
-function renderPowerButtons() {
-  dom.powerButtons.innerHTML = '';
-  const idle = state.power_plants.filter(p => !p.active).length;
-
-  for (const recipe of POWER_RECIPES) {
-    const btn = document.createElement('button');
-    btn.className = 'game-btn power-btn';
-    btn.dataset.recipeId = recipe.id;
-    btn.innerHTML = `
-      <div class="btn-icon" style="background:${RESOURCES[recipe.output].color}"></div>
-      <span class="btn-label">${recipe.name}</span>
-      <span class="btn-cost">${formatCost(recipe.input, ' + ')} → ${recipe.outputQty} ${RESOURCES[recipe.output].name}</span>
-      <span class="btn-cost">${idle} plant${idle !== 1 ? 's' : ''} available</span>
-    `;
-    btn.disabled = !canAfford(recipe.input) || idle === 0;
-    btn.addEventListener('click', () => startPower(recipe));
-    dom.powerButtons.appendChild(btn);
+  // Start the auto-loop if not already running
+  if (!powerTickRunning && state.power_plants.length > 0) {
+    powerTickRunning = true;
+    requestAnimationFrame(powerTick);
   }
 }
 
 function updatePowerButtons() {
-  renderPowerButtons();
+  // No buttons to update — plants auto-run
 }
 
 function renderPowerSlots() {
@@ -1098,12 +1096,12 @@ function renderPowerSlots() {
 
     const label = document.createElement('div');
     label.className = 'furnace-slot-label';
-    label.textContent = `Power Plant ${i + 1}`;
+    label.textContent = `Coal Power Plant ${i + 1}`;
 
     const statusText = document.createElement('span');
     statusText.className = 'furnace-slot-status';
     statusText.id = `power-status-${i}`;
-    statusText.textContent = p.active ? 'Generating power...' : 'Idle';
+    statusText.textContent = p.active ? 'Generating power...' : 'Waiting for coal...';
 
     const barContainer = document.createElement('div');
     barContainer.className = 'bar-container furnace-bar';
@@ -1126,44 +1124,39 @@ function renderPowerSlots() {
   }
 }
 
-function startPower(recipe) {
-  const plantIndex = state.power_plants.findIndex(p => !p.active);
-  if (plantIndex === -1) return;
-  if (!canAfford(recipe.input)) return;
-
-  for (const [r, n] of Object.entries(recipe.input)) {
-    state.resources[r] -= n;
-  }
-
-  const plant = state.power_plants[plantIndex];
-  plant.active = true;
-  plant.recipe = recipe;
-  plant.startTime = Date.now();
-  plant.duration = recipe.time;
-
-  renderResources();
-  updatePowerButtons();
-
-  const slot = document.getElementById(`power-slot-${plantIndex}`);
-  if (slot) slot.classList.add('active');
-  const statusEl = document.getElementById(`power-status-${plantIndex}`);
-  if (statusEl) statusEl.textContent = 'Generating power...';
-
-  if (!powerTickRunning) {
-    powerTickRunning = true;
-    requestAnimationFrame(powerTick);
-  }
-}
-
 let powerTickRunning = false;
 
 function powerTick() {
-  let anyActive = false;
+  let anyPlant = state.power_plants.length > 0;
+  if (!anyPlant) { powerTickRunning = false; return; }
+
+  const recipe = POWER_RECIPES[0];
 
   for (let i = 0; i < state.power_plants.length; i++) {
     const p = state.power_plants[i];
-    if (!p.active) continue;
 
+    // Try to start idle plants
+    if (!p.active) {
+      if (canAfford(recipe.input)) {
+        for (const [r, n] of Object.entries(recipe.input)) {
+          state.resources[r] -= n;
+        }
+        p.active = true;
+        p.recipe = recipe;
+        p.startTime = Date.now();
+        p.duration = recipe.time;
+
+        renderResources();
+
+        const slot = document.getElementById(`power-slot-${i}`);
+        if (slot) slot.classList.add('active');
+        const statusEl = document.getElementById(`power-status-${i}`);
+        if (statusEl) statusEl.textContent = 'Generating power...';
+      }
+      continue;
+    }
+
+    // Update active plants
     const elapsed = Date.now() - p.startTime;
     const pct = Math.min(100, (elapsed / p.duration) * 100);
 
@@ -1175,32 +1168,38 @@ function powerTick() {
       state.resources[p.recipe.output] += qty;
       state.discovered[p.recipe.output] = true;
 
-      showMessage(`Power Plant ${i + 1}: Generated ${qty} ${RESOURCES[p.recipe.output].name}!`, 'success');
-
       p.active = false;
       p.recipe = null;
 
       if (bar) bar.style.width = '0%';
-      const slot = document.getElementById(`power-slot-${i}`);
-      if (slot) slot.classList.remove('active');
-      const statusEl = document.getElementById(`power-status-${i}`);
-      if (statusEl) statusEl.textContent = 'Idle';
+
+      // Immediately try to start next cycle
+      if (canAfford(recipe.input)) {
+        for (const [r, n] of Object.entries(recipe.input)) {
+          state.resources[r] -= n;
+        }
+        p.active = true;
+        p.recipe = recipe;
+        p.startTime = Date.now();
+        p.duration = recipe.time;
+
+        const statusEl = document.getElementById(`power-status-${i}`);
+        if (statusEl) statusEl.textContent = 'Generating power...';
+      } else {
+        const slot = document.getElementById(`power-slot-${i}`);
+        if (slot) slot.classList.remove('active');
+        const statusEl = document.getElementById(`power-status-${i}`);
+        if (statusEl) statusEl.textContent = 'Waiting for coal...';
+      }
 
       renderResources();
-      updatePowerButtons();
       updateSmeltButtons();
       updateFactoryButtons();
       renderUpgrade();
-    } else {
-      anyActive = true;
     }
   }
 
-  if (anyActive) {
-    requestAnimationFrame(powerTick);
-  } else {
-    powerTickRunning = false;
-  }
+  requestAnimationFrame(powerTick);
 }
 
 // ========== UPGRADE / RETROFIT SYSTEM ==========
