@@ -47,6 +47,37 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h2:active {
+  color: #bbb;
+}
+
+.chevron {
+  font-size: 0.6rem;
+  transition: transform 0.3s ease;
+  color: #555;
+}
+
+.chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.panel-body {
+  overflow: hidden;
+  max-height: 2000px;
+  transition: max-height 0.35s ease, opacity 0.25s ease;
+  opacity: 1;
+}
+
+.panel-body.collapsed {
+  max-height: 0;
+  opacity: 0;
 }
 
 .panel-desc {
@@ -59,16 +90,27 @@ h2 {
 #explore-panel,
 #mine-panel,
 #tools-panel,
+#auto-miner-panel,
+#drone-panel,
 #craft-panel,
 #smelt-panel,
 #factory-panel,
 #power-panel,
 #upgrade-panel {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .hidden {
   display: none !important;
+}
+
+@keyframes panelReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-reveal {
+  animation: panelReveal 0.4s ease forwards;
 }
 
 /* Resources display */
@@ -122,6 +164,8 @@ h2 {
 #explore-buttons,
 #mine-buttons,
 #tools-buttons,
+#auto-miner-buttons,
+#drone-buttons,
 #craft-buttons,
 #smelt-buttons,
 #factory-buttons,
@@ -301,11 +345,29 @@ h2 {
   border-color: #1e3a4a;
 }
 
-#power-slots {
+#power-slots,
+#auto-miner-slots,
+#drone-slots {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 12px;
+}
+
+.auto-miner-btn {
+  border-color: #3a4a5e;
+}
+
+.auto-miner-bar-fill {
+  background: linear-gradient(to right, #607d8b, #455a64);
+}
+
+.drone-btn {
+  border-color: #1e4a4a;
+}
+
+.drone-bar-fill {
+  background: linear-gradient(to right, #80deea, #4bacb8);
 }
 
 /* Furnace slots */

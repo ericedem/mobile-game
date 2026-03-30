@@ -1,24 +1,29 @@
 // Resource definitions
 const RESOURCES = {
-  wood:        { name: 'Wood',        color: '#8B5E3C', perClick: 1 },
-  stone:       { name: 'Stone',       color: '#999',    perClick: 1 },
-  coal:        { name: 'Coal',        color: '#555',    perClick: 1 },
-  iron_ore:    { name: 'Iron Ore',    color: '#b05030', perClick: 1 },
-  copper_ore:  { name: 'Copper Ore',  color: '#c07040', perClick: 1 },
-  iron_bar:    { name: 'Iron Bar',    color: '#aab0b8', perClick: 0 },
-  copper_bar:  { name: 'Copper Bar',  color: '#d4884a', perClick: 0 },
-  copper_wire: { name: 'Copper Wire', color: '#e09050', perClick: 0 },
-  circuit:     { name: 'Circuit',     color: '#4caf50', perClick: 0 },
-  power:       { name: 'Power',       color: '#ffeb3b', perClick: 0 },
+  wood:         { name: 'Wood',         color: '#8B5E3C', perClick: 1 },
+  stone:        { name: 'Stone',        color: '#999',    perClick: 1 },
+  coal:         { name: 'Coal',         color: '#555',    perClick: 1 },
+  iron_ore:     { name: 'Iron Ore',     color: '#b05030', perClick: 1 },
+  copper_ore:   { name: 'Copper Ore',   color: '#c07040', perClick: 1 },
+  lithium:      { name: 'Lithium',      color: '#b0e0ff', perClick: 0 },
+  iron_bar:     { name: 'Iron Bar',     color: '#aab0b8', perClick: 0 },
+  copper_bar:   { name: 'Copper Bar',   color: '#d4884a', perClick: 0 },
+  copper_wire:  { name: 'Copper Wire',  color: '#e09050', perClick: 0 },
+  circuit:      { name: 'Circuit',      color: '#4caf50', perClick: 0 },
+  power:        { name: 'Power',        color: '#ffeb3b', perClick: 0 },
+  auto_miner:   { name: 'Auto Miner',   color: '#607d8b', perClick: 0 },
+  battery:      { name: 'Battery',      color: '#66bb6a', perClick: 0 },
+  search_drone: { name: 'Search Drone', color: '#80deea', perClick: 0 },
 };
 
 // Explore options — timed searches that yield mineable deposits
 const EXPLORE_OPTIONS = [
-  { id: 'wood',       name: 'Search for Wood',   time: 1500,  yield: [6, 12] },
-  { id: 'stone',      name: 'Search for Stone',  time: 2000,  yield: [5, 10], requiresTool: 'axe' },
-  { id: 'coal',       name: 'Search for Coal',   time: 3000,  yield: [4, 8],  requiresTool: 'pickaxe' },
-  { id: 'iron_ore',   name: 'Search for Iron',   time: 4000,  yield: [3, 6],  requiresTool: 'pickaxe' },
+  { id: 'wood',       name: 'Search for Wood',    time: 1500,  yield: [6, 12] },
+  { id: 'stone',      name: 'Search for Stone',   time: 2000,  yield: [5, 10], requiresTool: 'axe' },
+  { id: 'coal',       name: 'Search for Coal',    time: 3000,  yield: [4, 8],  requiresTool: 'pickaxe' },
+  { id: 'iron_ore',   name: 'Search for Iron',    time: 4000,  yield: [3, 6],  requiresTool: 'pickaxe' },
   { id: 'copper_ore', name: 'Search for Copper',  time: 4000,  yield: [3, 6],  requiresTool: 'pickaxe' },
+  { id: 'lithium',    name: 'Search for Lithium', time: 5000,  yield: [2, 4],  requiresItem: 'auto_miner' },
 ];
 
 // Mining times (ms) per resource — tools can speed things up
@@ -28,6 +33,7 @@ const MINE_TIMES = {
   coal:       { base: 2500 },
   iron_ore:   { base: 3000 },
   copper_ore: { base: 3000 },
+  lithium:    { base: 4000 },
 };
 
 // Tool definitions — one-time crafts that provide permanent bonuses
@@ -38,6 +44,8 @@ const TOOLS = [
 
 // Hand-crafting recipes (instant, no machine needed)
 const HANDCRAFT_RECIPES = [
+  { id: 'auto_miner',   name: 'Craft Auto Miner',   input: { coal: 5, iron_bar: 3, copper_bar: 3, circuit: 1 }, output: 'auto_miner',   outputQty: 1, unlockRequires: 'circuit' },
+  { id: 'search_drone', name: 'Craft Search Drone',  input: { battery: 1, circuit: 1, copper_wire: 2 },         output: 'search_drone', outputQty: 1, unlockRequires: 'battery' },
 ];
 
 // Craftable structures
@@ -92,8 +100,9 @@ const POWER_RECIPES = [
 
 // Factory recipes (timed, like furnaces but in factories)
 const FACTORY_RECIPES = [
-  { id: 'copper_wire', name: 'Make Copper Wire', input: { copper_bar: 1 },                    output: 'copper_wire', time: 2000 },
-  { id: 'circuit',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, coal: 1 }, output: 'circuit',     time: 5000 },
+  { id: 'copper_wire', name: 'Make Copper Wire', input: { copper_bar: 1 },                                            output: 'copper_wire', time: 2000 },
+  { id: 'circuit',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, coal: 1 },                     output: 'circuit',     time: 5000 },
+  { id: 'battery',     name: 'Make Battery',     input: { power: 2, lithium: 1, copper_bar: 1, iron_bar: 1, circuit: 1 }, output: 'battery', time: 6000 },
 ];
 
 // Smelt recipes — electric variants use power instead of coal and are faster
@@ -108,8 +117,9 @@ const ELECTRIC_SMELT_RECIPES = [
 
 // Factory recipes — electric variants use power instead of coal and are faster
 const ELECTRIC_FACTORY_RECIPES = [
-  { id: 'copper_wire_e', name: 'Make Copper Wire', input: { copper_bar: 1 },                      output: 'copper_wire', time: 1500 },
-  { id: 'circuit_e',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, power: 1 }, output: 'circuit',     time: 3500 },
+  { id: 'copper_wire_e', name: 'Make Copper Wire', input: { copper_bar: 1 },                                              output: 'copper_wire', time: 1500 },
+  { id: 'circuit_e',     name: 'Make Circuit',     input: { copper_wire: 3, iron_bar: 1, power: 1 },                      output: 'circuit',     time: 3500 },
+  { id: 'battery_e',     name: 'Make Battery',     input: { power: 3, lithium: 1, copper_bar: 1, iron_bar: 1, circuit: 1 }, output: 'battery',   time: 4000 },
 ];
 
 // Game state
@@ -124,6 +134,10 @@ const state = {
   power_plants: [],    // array of { active, recipe, startTime, duration }
   searches: {},        // resource_id: { active, startTime, duration } — active search timers
   mining: {},          // resource_id: { active, startTime, duration } — active mining timers
+  auto_miners: [],     // array of { active, resourceId, startTime, interval, remaining, total }
+  drones: [],          // array of { active, optId, startTime, interval, remaining, total }
+  collapsed: {},       // panel_id: true/false — accordion collapsed state
+  revealed: {},        // panel_id: true — tracks which panels have been revealed (for animation)
 };
 
 // Initialize
@@ -150,6 +164,12 @@ const dom = {
   mineButtons: document.getElementById('mine-buttons'),
   toolsPanel: document.getElementById('tools-panel'),
   toolsButtons: document.getElementById('tools-buttons'),
+  autoMinerPanel: document.getElementById('auto-miner-panel'),
+  autoMinerButtons: document.getElementById('auto-miner-buttons'),
+  autoMinerSlots: document.getElementById('auto-miner-slots'),
+  dronePanel: document.getElementById('drone-panel'),
+  droneButtons: document.getElementById('drone-buttons'),
+  droneSlots: document.getElementById('drone-slots'),
   craftPanel: document.getElementById('craft-panel'),
   craftButtons: document.getElementById('craft-buttons'),
   handcraftPanel: document.getElementById('handcraft-panel'),
@@ -228,8 +248,9 @@ function updateResourceCount(id) {
 function renderExplore() {
   dom.exploreButtons.innerHTML = '';
   for (const opt of EXPLORE_OPTIONS) {
-    // Hide options that require a tool the player doesn't have
+    // Hide options that require a tool or item the player doesn't have
     if (opt.requiresTool && !state.tools[opt.requiresTool]) continue;
+    if (opt.requiresItem && !state.discovered[opt.requiresItem]) continue;
 
     const search = state.searches[opt.id];
 
@@ -348,7 +369,7 @@ function renderMine() {
     dom.minePanel.classList.add('hidden');
     return;
   }
-  dom.minePanel.classList.remove('hidden');
+  showPanel(dom.minePanel);
   dom.mineButtons.innerHTML = '';
 
   for (const [id, def] of mineable) {
@@ -479,7 +500,7 @@ function renderTools() {
   }
 
   if (anyVisible) {
-    dom.toolsPanel.classList.remove('hidden');
+    showPanel(dom.toolsPanel);
   } else {
     dom.toolsPanel.classList.add('hidden');
   }
@@ -533,7 +554,7 @@ function renderCraft() {
   }
 
   if (anyVisible) {
-    dom.craftPanel.classList.remove('hidden');
+    showPanel(dom.craftPanel);
   } else {
     dom.craftPanel.classList.add('hidden');
   }
@@ -597,7 +618,7 @@ function renderSmelt() {
     dom.smeltPanel.classList.add('hidden');
     return;
   }
-  dom.smeltPanel.classList.remove('hidden');
+  showPanel(dom.smeltPanel);
 
   renderSmeltButtons();
   renderFurnaceSlots();
@@ -805,7 +826,7 @@ function renderHandcraft() {
   }
 
   if (anyVisible) {
-    dom.handcraftPanel.classList.remove('hidden');
+    showPanel(dom.handcraftPanel);
   } else {
     dom.handcraftPanel.classList.add('hidden');
   }
@@ -854,7 +875,7 @@ function renderFactory() {
     dom.factoryPanel.classList.add('hidden');
     return;
   }
-  dom.factoryPanel.classList.remove('hidden');
+  showPanel(dom.factoryPanel);
 
   renderFactoryButtons();
   renderFactorySlots();
@@ -1037,7 +1058,7 @@ function renderPower() {
     dom.powerPanel.classList.add('hidden');
     return;
   }
-  dom.powerPanel.classList.remove('hidden');
+  showPanel(dom.powerPanel);
 
   renderPowerButtons();
   renderPowerSlots();
@@ -1215,7 +1236,7 @@ function renderUpgrade() {
   }
 
   if (anyVisible) {
-    dom.upgradePanel.classList.remove('hidden');
+    showPanel(dom.upgradePanel);
   } else {
     dom.upgradePanel.classList.add('hidden');
   }
@@ -1250,6 +1271,394 @@ function applyUpgrade(upgrade) {
   renderAll();
 }
 
+// ========== AUTO MINER SYSTEM ==========
+
+const AUTO_MINER_ITERATIONS = 15;
+const AUTO_MINER_INTERVAL = 3000; // ms between each auto-mine
+
+function renderAutoMiners() {
+  if (!state.discovered.auto_miner) {
+    dom.autoMinerPanel.classList.add('hidden');
+    return;
+  }
+  showPanel(dom.autoMinerPanel);
+
+  // Deploy buttons
+  dom.autoMinerButtons.innerHTML = '';
+  const deployable = Object.entries(RESOURCES).filter(([id]) =>
+    state.deposits[id] > 0 && MINE_TIMES[id]
+  );
+
+  for (const [id, def] of deployable) {
+    const btn = document.createElement('button');
+    btn.className = 'game-btn auto-miner-btn';
+    btn.innerHTML = `
+      <div class="btn-icon" style="background:${def.color}"></div>
+      <span class="btn-label">Deploy on ${def.name}</span>
+      <span class="btn-cost">Uses 1 Auto Miner · ${AUTO_MINER_ITERATIONS} units · ${state.deposits[id]} in deposit</span>
+    `;
+    btn.disabled = state.resources.auto_miner < 1 || state.deposits[id] <= 0;
+    btn.addEventListener('click', () => deployAutoMiner(id));
+    dom.autoMinerButtons.appendChild(btn);
+  }
+  if (deployable.length === 0) {
+    dom.autoMinerButtons.innerHTML = '<span style="color:#555;font-size:0.8rem;">No deposits available to mine</span>';
+  }
+
+  // Active slots
+  renderAutoMinerSlots();
+}
+
+function deployAutoMiner(resourceId) {
+  if (state.resources.auto_miner < 1 || state.deposits[resourceId] <= 0) return;
+
+  state.resources.auto_miner -= 1;
+  const iterations = Math.min(AUTO_MINER_ITERATIONS, state.deposits[resourceId]);
+  state.auto_miners.push({
+    active: true,
+    resourceId,
+    startTime: Date.now(),
+    interval: AUTO_MINER_INTERVAL,
+    remaining: iterations,
+    total: iterations,
+    lastTick: Date.now(),
+  });
+
+  showMessage(`Deployed Auto Miner on ${RESOURCES[resourceId].name}!`, 'success');
+  renderResources();
+  renderAutoMiners();
+  updateHandcraftButtons();
+
+  if (!autoMinerTickRunning) {
+    autoMinerTickRunning = true;
+    requestAnimationFrame(autoMinerTick);
+  }
+}
+
+function renderAutoMinerSlots() {
+  dom.autoMinerSlots.innerHTML = '';
+  for (let i = 0; i < state.auto_miners.length; i++) {
+    const m = state.auto_miners[i];
+    if (!m.active) continue;
+
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot active';
+    slot.id = `auto-miner-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `Auto Miner: ${RESOURCES[m.resourceId].name}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `auto-miner-status-${i}`;
+    statusText.textContent = `${m.remaining}/${m.total} remaining`;
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar auto-miner-bar-fill';
+    bar.id = `auto-miner-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.autoMinerSlots.appendChild(slot);
+  }
+}
+
+let autoMinerTickRunning = false;
+
+function autoMinerTick() {
+  let anyActive = false;
+
+  for (let i = 0; i < state.auto_miners.length; i++) {
+    const m = state.auto_miners[i];
+    if (!m.active) continue;
+
+    const elapsed = Date.now() - m.lastTick;
+    const pct = Math.min(100, (elapsed / m.interval) * 100);
+
+    const bar = document.getElementById(`auto-miner-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= m.interval) {
+      // Mine one unit
+      if (state.deposits[m.resourceId] > 0) {
+        state.deposits[m.resourceId] -= 1;
+        state.resources[m.resourceId] += 1;
+        m.remaining -= 1;
+        m.lastTick = Date.now();
+
+        updateResourceCount(m.resourceId);
+        updateCraftButtons();
+        updateToolButtons();
+        updateSmeltButtons();
+        updateFactoryButtons();
+      }
+
+      if (m.remaining <= 0 || state.deposits[m.resourceId] <= 0) {
+        m.active = false;
+        showMessage(`Auto Miner finished: ${RESOURCES[m.resourceId].name}`, 'success');
+        renderAutoMiners();
+        renderMine();
+      } else {
+        const statusEl = document.getElementById(`auto-miner-status-${i}`);
+        if (statusEl) statusEl.textContent = `${m.remaining}/${m.total} remaining`;
+      }
+    }
+
+    if (m.active) anyActive = true;
+  }
+
+  if (anyActive) {
+    requestAnimationFrame(autoMinerTick);
+  } else {
+    autoMinerTickRunning = false;
+    // Clean up finished miners
+    state.auto_miners = state.auto_miners.filter(m => m.active);
+    renderAutoMiners();
+  }
+}
+
+// ========== SEARCH DRONE SYSTEM ==========
+
+const DRONE_ITERATIONS = 8;
+
+function renderDrones() {
+  if (!state.discovered.search_drone) {
+    dom.dronePanel.classList.add('hidden');
+    return;
+  }
+  showPanel(dom.dronePanel);
+
+  dom.droneButtons.innerHTML = '';
+  for (const opt of EXPLORE_OPTIONS) {
+    if (opt.requiresTool && !state.tools[opt.requiresTool]) continue;
+    if (opt.requiresItem && !state.discovered[opt.requiresItem]) continue;
+
+    const btn = document.createElement('button');
+    btn.className = 'game-btn drone-btn';
+    btn.innerHTML = `
+      <div class="btn-icon" style="background:${RESOURCES[opt.id].color}"></div>
+      <span class="btn-label">Drone: ${opt.name}</span>
+      <span class="btn-cost">Uses 1 Search Drone · ${DRONE_ITERATIONS} searches · ${(opt.time / 1000).toFixed(0)}s each</span>
+    `;
+    btn.disabled = state.resources.search_drone < 1;
+    btn.addEventListener('click', () => deployDrone(opt));
+    dom.droneButtons.appendChild(btn);
+  }
+
+  renderDroneSlots();
+}
+
+function deployDrone(opt) {
+  if (state.resources.search_drone < 1) return;
+
+  state.resources.search_drone -= 1;
+  state.drones.push({
+    active: true,
+    optId: opt.id,
+    startTime: Date.now(),
+    interval: opt.time,
+    remaining: DRONE_ITERATIONS,
+    total: DRONE_ITERATIONS,
+    lastTick: Date.now(),
+  });
+
+  showMessage(`Deployed Search Drone for ${RESOURCES[opt.id].name}!`, 'success');
+  renderResources();
+  renderDrones();
+  updateHandcraftButtons();
+
+  if (!droneTickRunning) {
+    droneTickRunning = true;
+    requestAnimationFrame(droneTick);
+  }
+}
+
+function renderDroneSlots() {
+  dom.droneSlots.innerHTML = '';
+  for (let i = 0; i < state.drones.length; i++) {
+    const d = state.drones[i];
+    if (!d.active) continue;
+
+    const slot = document.createElement('div');
+    slot.className = 'furnace-slot active';
+    slot.id = `drone-slot-${i}`;
+
+    const label = document.createElement('div');
+    label.className = 'furnace-slot-label';
+    label.textContent = `Drone: ${RESOURCES[d.optId].name}`;
+
+    const statusText = document.createElement('span');
+    statusText.className = 'furnace-slot-status';
+    statusText.id = `drone-status-${i}`;
+    statusText.textContent = `${d.remaining}/${d.total} searches left`;
+
+    const barContainer = document.createElement('div');
+    barContainer.className = 'bar-container furnace-bar';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar drone-bar-fill';
+    bar.id = `drone-bar-${i}`;
+    bar.style.width = '0%';
+
+    barContainer.appendChild(bar);
+
+    const header = document.createElement('div');
+    header.className = 'furnace-slot-header';
+    header.appendChild(label);
+    header.appendChild(statusText);
+
+    slot.appendChild(header);
+    slot.appendChild(barContainer);
+    dom.droneSlots.appendChild(slot);
+  }
+}
+
+let droneTickRunning = false;
+
+function droneTick() {
+  let anyActive = false;
+
+  for (let i = 0; i < state.drones.length; i++) {
+    const d = state.drones[i];
+    if (!d.active) continue;
+
+    const elapsed = Date.now() - d.lastTick;
+    const pct = Math.min(100, (elapsed / d.interval) * 100);
+
+    const bar = document.getElementById(`drone-bar-${i}`);
+    if (bar) bar.style.width = pct + '%';
+
+    if (elapsed >= d.interval) {
+      // Complete one search
+      const opt = EXPLORE_OPTIONS.find(o => o.id === d.optId);
+      if (opt) {
+        const [minYield, maxYield] = opt.yield;
+        const amount = minYield + Math.floor(Math.random() * (maxYield - minYield + 1));
+        state.deposits[d.optId] += amount;
+        state.discovered[d.optId] = true;
+        showMessage(`Drone found ${amount} ${RESOURCES[d.optId].name}!`, 'discover');
+        renderResources();
+        renderMine();
+        renderAutoMiners();
+      }
+
+      d.remaining -= 1;
+      d.lastTick = Date.now();
+
+      if (d.remaining <= 0) {
+        d.active = false;
+        showMessage(`Search Drone finished: ${RESOURCES[d.optId].name}`, 'success');
+        renderDrones();
+      } else {
+        const statusEl = document.getElementById(`drone-status-${i}`);
+        if (statusEl) statusEl.textContent = `${d.remaining}/${d.total} searches left`;
+      }
+    }
+
+    if (d.active) anyActive = true;
+  }
+
+  if (anyActive) {
+    requestAnimationFrame(droneTick);
+  } else {
+    droneTickRunning = false;
+    state.drones = state.drones.filter(d => d.active);
+    renderDrones();
+  }
+}
+
+// ========== ACCORDION SYSTEM ==========
+
+function showPanel(panel) {
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    if (!state.revealed[panel.id]) {
+      state.revealed[panel.id] = true;
+      panel.classList.add('panel-reveal');
+      panel.addEventListener('animationend', () => panel.classList.remove('panel-reveal'), { once: true });
+    }
+  }
+}
+
+function togglePanel(panelId) {
+  state.collapsed[panelId] = !state.collapsed[panelId];
+  applyCollapsed(panelId);
+}
+
+function applyCollapsed(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  const body = panel.querySelector('.panel-body');
+  const chevron = panel.querySelector('.chevron');
+  if (!body) return;
+
+  if (state.collapsed[panelId]) {
+    body.classList.add('collapsed');
+    if (chevron) chevron.classList.add('collapsed');
+  } else {
+    body.classList.remove('collapsed');
+    if (chevron) chevron.classList.remove('collapsed');
+  }
+}
+
+function autoCollapse() {
+  // Collapse explore when player has deposits to mine
+  const hasDeposits = Object.values(state.deposits).some(d => d > 0);
+  if (hasDeposits && !state.revealed['explore-auto-collapsed']) {
+    state.revealed['explore-auto-collapsed'] = true;
+    state.collapsed['explore-panel'] = true;
+  }
+
+  // Collapse tools when all tools crafted
+  if (TOOLS.every(t => state.tools[t.id]) && !state.revealed['tools-auto-collapsed']) {
+    state.revealed['tools-auto-collapsed'] = true;
+    state.collapsed['tools-panel'] = true;
+  }
+
+  // Apply all collapsed states
+  for (const panelId of Object.keys(state.collapsed)) {
+    applyCollapsed(panelId);
+  }
+}
+
+function setupAccordionHeaders() {
+  const panels = document.querySelectorAll('#game > div[id$="-panel"]');
+  panels.forEach(panel => {
+    if (panel.id === 'resources-panel') return; // resources always visible
+    const h2 = panel.querySelector('h2');
+    if (!h2) return;
+
+    // Add chevron
+    const chevron = document.createElement('span');
+    chevron.className = 'chevron';
+    chevron.textContent = '\u25BC';
+    h2.appendChild(chevron);
+
+    // Wrap content in panel-body if not already wrapped
+    if (!panel.querySelector('.panel-body')) {
+      const body = document.createElement('div');
+      body.className = 'panel-body';
+      const children = Array.from(panel.children).filter(c => c !== h2);
+      children.forEach(c => body.appendChild(c));
+      panel.appendChild(body);
+    }
+
+    h2.addEventListener('click', () => togglePanel(panel.id));
+  });
+}
+
 // ========== RENDER ALL ==========
 
 function renderAll() {
@@ -1257,13 +1666,17 @@ function renderAll() {
   renderExplore();
   renderMine();
   renderTools();
+  renderAutoMiners();
+  renderDrones();
   renderCraft();
   renderHandcraft();
   renderSmelt();
   renderFactory();
   renderPower();
   renderUpgrade();
+  autoCollapse();
 }
 
 // Init
+setupAccordionHeaders();
 renderAll();
