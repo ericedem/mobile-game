@@ -56,7 +56,7 @@ const WORKERS = [
     output: 'food',
     outputQty: 3,             // produced per cycle
     interval: 5000,
-    unlockRequires: 'food',
+    requiresTool: 'axe',
   },
   {
     id: 'woodcutter',
@@ -67,7 +67,7 @@ const WORKERS = [
     output: 'wood',
     outputQty: 2,
     interval: 4000,
-    unlockRequires: 'food',
+    requiresTool: 'axe',
   },
   {
     id: 'explorer',
@@ -78,7 +78,7 @@ const WORKERS = [
     output: null,             // special: adds to deposits instead
     exploreTargets: ['wood', 'stone'],
     interval: 6000,
-    unlockRequires: 'food',
+    requiresTool: 'axe',
   },
 ];
 
@@ -189,7 +189,6 @@ const state = {
   stoneTools: false,   // whether stone tools upgrade has been applied
   auto_miners: [],     // array of { active, resourceId, startTime, interval, remaining, total }
   drones: [],          // array of { active, optId, startTime, interval, remaining, total }
-  collapsed: {},       // panel_id: true/false — accordion collapsed state
   revealed: {},        // panel_id: true — tracks which panels have been revealed (for animation)
 };
 
@@ -1346,7 +1345,7 @@ function applyUpgrade(upgrade) {
 // ========== WORKER SYSTEM ==========
 
 function renderWorkers() {
-  const anyUnlocked = WORKERS.some(w => state.discovered[w.unlockRequires]);
+  const anyUnlocked = WORKERS.some(w => w.requiresTool ? state.tools[w.requiresTool] : true);
   if (!anyUnlocked) {
     dom.workerPanel.classList.add('hidden');
     return;
@@ -1356,7 +1355,7 @@ function renderWorkers() {
   // Hire buttons
   dom.workerButtons.innerHTML = '';
   for (const w of WORKERS) {
-    if (w.unlockRequires && !state.discovered[w.unlockRequires]) continue;
+    if (w.requiresTool && !state.tools[w.requiresTool]) continue;
 
     const btn = document.createElement('button');
     btn.className = 'game-btn worker-btn';
@@ -1865,53 +1864,6 @@ function showPanel(panel) {
   }
 }
 
-function togglePanel(panelId) {
-  state.collapsed[panelId] = !state.collapsed[panelId];
-  applyCollapsed(panelId);
-}
-
-function applyCollapsed(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return;
-  const body = panel.querySelector('.panel-body');
-  const chevron = panel.querySelector('.chevron');
-  if (!body) return;
-
-  if (state.collapsed[panelId]) {
-    body.classList.add('collapsed');
-    if (chevron) chevron.classList.add('collapsed');
-  } else {
-    body.classList.remove('collapsed');
-    if (chevron) chevron.classList.remove('collapsed');
-  }
-}
-
-function setupAccordionHeaders() {
-  const panels = document.querySelectorAll('#game > div[id$="-panel"]');
-  panels.forEach(panel => {
-    if (panel.id === 'resources-panel') return; // resources always visible
-    const h2 = panel.querySelector('h2');
-    if (!h2) return;
-
-    // Add chevron
-    const chevron = document.createElement('span');
-    chevron.className = 'chevron';
-    chevron.textContent = '\u25BC';
-    h2.appendChild(chevron);
-
-    // Wrap content in panel-body if not already wrapped
-    if (!panel.querySelector('.panel-body')) {
-      const body = document.createElement('div');
-      body.className = 'panel-body';
-      const children = Array.from(panel.children).filter(c => c !== h2);
-      children.forEach(c => body.appendChild(c));
-      panel.appendChild(body);
-    }
-
-    h2.addEventListener('click', () => togglePanel(panel.id));
-  });
-}
-
 // ========== RENDER ALL ==========
 
 function renderAll() {
@@ -1931,7 +1883,6 @@ function renderAll() {
 }
 
 // Init
-setupAccordionHeaders();
 renderAll();
 // Start worker tick if there are workers
 if (state.workers.length > 0 && !workerTickRunning) {

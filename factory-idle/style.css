@@ -47,37 +47,6 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 8px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  -webkit-tap-highlight-color: transparent;
-}
-
-h2:active {
-  color: #bbb;
-}
-
-.chevron {
-  font-size: 0.6rem;
-  transition: transform 0.3s ease;
-  color: #555;
-}
-
-.chevron.collapsed {
-  transform: rotate(-90deg);
-}
-
-.panel-body {
-  overflow: hidden;
-  max-height: 2000px;
-  transition: max-height 0.35s ease, opacity 0.25s ease;
-  opacity: 1;
-}
-
-.panel-body.collapsed {
-  max-height: 0;
-  opacity: 0;
 }
 
 .panel-desc {
