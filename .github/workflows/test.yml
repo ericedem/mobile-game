@@ -1,0 +1,21 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, claude/mobile-game-exploration-kruaS]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check
+        run: |
+          node -c factory-idle/game-logic.js
+          node -c factory-idle/game.js
+
+      - name: Run tests
+        run: node --test factory-idle/game-logic.test.js
