@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Math Flash Cards</title>
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <a href="../" class="back-link">&larr; Arcade</a>
+      <h1>Math Flash</h1>
+    </header>
+
+    <!-- Menu screen -->
+    <div id="menu-screen">
+      <p class="menu-subtitle">Multiplication Tables</p>
+
+      <div id="table-picker">
+        <p class="picker-label">Pick a table to practice:</p>
+        <div id="table-buttons"></div>
+      </div>
+
+      <button id="start-btn" class="primary-btn" disabled>Start</button>
+      <p id="selection-label" class="selection-label">Select a table above</p>
+    </div>
+
+    <!-- Game screen -->
+    <div id="game-screen" class="hidden">
+      <div id="progress-bar"><div id="progress-fill"></div></div>
+      <div id="score-row">
+        <span id="score-display">0 / 0</span>
+        <span id="streak-display"></span>
+      </div>
+
+      <div id="card">
+        <div id="problem"></div>
+      </div>
+
+      <div id="choices"></div>
+    </div>
+
+    <!-- Results screen -->
+    <div id="results-screen" class="hidden">
+      <div id="results-card">
+        <div id="results-grade"></div>
+        <div id="results-score"></div>
+        <div id="results-time"></div>
+        <div id="results-streak"></div>
+      </div>
+      <div id="missed-section" class="hidden">
+        <p class="missed-title">Review these:</p>
+        <div id="missed-list"></div>
+      </div>
+      <button id="retry-btn" class="primary-btn">Try Again</button>
+      <button id="menu-btn" class="secondary-btn">Back to Menu</button>
+    </div>
+  </div>
+
+  <script src="game.js?v=1"></script>
+</body>
+</html>

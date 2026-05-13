@@ -147,6 +147,15 @@
       </div>
     </a>
 
+    <a href="math-flash/" class="game-card" id="card-math">
+      <div class="game-card-banner" id="banner-math"></div>
+      <div class="game-card-body">
+        <div class="game-card-title">Math Flash</div>
+        <div class="game-card-desc">Practice multiplication tables with flash cards. Pick a table, answer 12 questions, and track your mastery.</div>
+        <span class="game-card-tag">Education</span>
+      </div>
+    </a>
+
     <div class="game-card coming-soon">
       <div class="game-card-banner" style="background: #1e1e3a; height: 80px;"></div>
       <div class="game-card-body">
@@ -321,6 +330,60 @@
     fc.moveTo(385, 65);
     fc.lineTo(415, 65);
     fc.stroke();
+    // Draw Math Flash banner
+    const mBanner = document.getElementById('banner-math');
+    mBanner.style.background = 'linear-gradient(135deg, #0f0f1a 0%, #1a1030 100%)';
+    const mCanvas = document.createElement('canvas');
+    mCanvas.width = 500;
+    mCanvas.height = 120;
+    mCanvas.style.width = '100%';
+    mCanvas.style.height = '100%';
+    mBanner.appendChild(mCanvas);
+    const mc = mCanvas.getContext('2d');
+
+    // Flash card shapes
+    mc.fillStyle = '#1a1a2e';
+    mc.strokeStyle = '#252545';
+    mc.lineWidth = 2;
+
+    // Card 1
+    mc.beginPath();
+    mc.roundRect(50, 15, 100, 90, 10);
+    mc.fill();
+    mc.stroke();
+    mc.fillStyle = '#fff';
+    mc.font = 'bold 20px system-ui';
+    mc.textAlign = 'center';
+    mc.fillText('7 × 8', 100, 55);
+    mc.fillStyle = '#7c4dff';
+    mc.font = 'bold 26px system-ui';
+    mc.fillText('56', 100, 88);
+
+    // Card 2
+    mc.fillStyle = '#1a1a2e';
+    mc.beginPath();
+    mc.roundRect(200, 15, 100, 90, 10);
+    mc.fill();
+    mc.stroke();
+    mc.fillStyle = '#fff';
+    mc.font = 'bold 20px system-ui';
+    mc.fillText('9 × 6', 250, 55);
+    mc.fillStyle = '#4caf50';
+    mc.font = 'bold 26px system-ui';
+    mc.fillText('54', 250, 88);
+
+    // Card 3
+    mc.fillStyle = '#1a1a2e';
+    mc.beginPath();
+    mc.roundRect(350, 15, 100, 90, 10);
+    mc.fill();
+    mc.stroke();
+    mc.fillStyle = '#fff';
+    mc.font = 'bold 20px system-ui';
+    mc.fillText('12 × 4', 400, 55);
+    mc.fillStyle = '#f0a030';
+    mc.font = 'bold 26px system-ui';
+    mc.fillText('?', 400, 88);
   </script>
 </body>
 </html>
