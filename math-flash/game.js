@@ -5,10 +5,15 @@ const dom = {
   gameScreen: document.getElementById('game-screen'),
   resultsScreen: document.getElementById('results-screen'),
   tableButtons: document.getElementById('table-buttons'),
+  tablePicker: document.getElementById('table-picker'),
+  advancedInfo: document.getElementById('advanced-info'),
+  modePractice: document.getElementById('mode-practice'),
+  modeAdvanced: document.getElementById('mode-advanced'),
   startBtn: document.getElementById('start-btn'),
   selectionLabel: document.getElementById('selection-label'),
   progressFill: document.getElementById('progress-fill'),
   scoreDisplay: document.getElementById('score-display'),
+  remainingDisplay: document.getElementById('remaining-display'),
   streakDisplay: document.getElementById('streak-display'),
   problem: document.getElementById('problem'),
   choices: document.getElementById('choices'),
@@ -23,13 +28,16 @@ const dom = {
 };
 
 let selectedTable = null;
+let gameMode = 'practice';
 let questions = [];
 let currentIndex = 0;
 let correctCount = 0;
+let totalAnswered = 0;
 let streak = 0;
 let bestStreak = 0;
 let startTime = 0;
 let missed = [];
+let retriesNeeded = 0;
 let waiting = false;
 
 const mastered = JSON.parse(localStorage.getItem('mathFlashMastered') || '{}');
@@ -46,6 +54,28 @@ function init() {
   dom.startBtn.addEventListener('click', startGame);
   dom.retryBtn.addEventListener('click', startGame);
   dom.menuBtn.addEventListener('click', showMenu);
+  dom.modePractice.addEventListener('click', () => setMode('practice'));
+  dom.modeAdvanced.addEventListener('click', () => setMode('advanced'));
+}
+
+function setMode(mode) {
+  gameMode = mode;
+  dom.modePractice.classList.toggle('selected', mode === 'practice');
+  dom.modeAdvanced.classList.toggle('selected', mode === 'advanced');
+
+  if (mode === 'advanced') {
+    dom.tablePicker.classList.add('hidden');
+    dom.advancedInfo.classList.remove('hidden');
+    dom.startBtn.disabled = false;
+    dom.selectionLabel.textContent = '144 questions — wrong answers repeat';
+  } else {
+    dom.tablePicker.classList.remove('hidden');
+    dom.advancedInfo.classList.add('hidden');
+    if (!selectedTable) {
+      dom.startBtn.disabled = true;
+      dom.selectionLabel.textContent = 'Select a table above';
+    }
+  }
 }
 
 function selectTable(n) {
@@ -57,17 +87,29 @@ function selectTable(n) {
   dom.selectionLabel.textContent = `${n} × 1 through ${n} × 12`;
 }
 
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function generateQuestions() {
+  if (gameMode === 'advanced') {
+    const pairs = [];
+    for (let a = 1; a <= 12; a++) {
+      for (let b = 1; b <= 12; b++) {
+        pairs.push({ a, b, answer: a * b });
+      }
+    }
+    return shuffle(pairs);
+  }
   const pairs = [];
   for (let i = 1; i <= 12; i++) {
     pairs.push({ a: selectedTable, b: i, answer: selectedTable * i });
   }
-  // Shuffle
-  for (let i = pairs.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
-  }
-  return pairs.slice(0, TOTAL_QUESTIONS);
+  return shuffle(pairs).slice(0, TOTAL_QUESTIONS);
 }
 
 function generateChoices(correct) {
@@ -77,21 +119,22 @@ function generateChoices(correct) {
     const wrong = correct + offset;
     if (wrong > 0 && wrong !== correct) choices.add(wrong);
   }
-  const arr = [...choices];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+  return shuffle([...choices]);
+}
+
+function getTotalQuestions() {
+  return questions.length;
 }
 
 function startGame() {
   questions = generateQuestions();
   currentIndex = 0;
   correctCount = 0;
+  totalAnswered = 0;
   streak = 0;
   bestStreak = 0;
   missed = [];
+  retriesNeeded = 0;
   startTime = Date.now();
 
   dom.menuScreen.classList.add('hidden');
@@ -104,9 +147,11 @@ function startGame() {
 function showQuestion() {
   waiting = false;
   const q = questions[currentIndex];
+  const total = getTotalQuestions();
 
-  dom.progressFill.style.width = ((currentIndex / TOTAL_QUESTIONS) * 100) + '%';
-  dom.scoreDisplay.textContent = `${correctCount} / ${currentIndex}`;
+  dom.progressFill.style.width = ((currentIndex / total) * 100) + '%';
+  dom.scoreDisplay.textContent = `${correctCount} / ${totalAnswered}`;
+  dom.remainingDisplay.textContent = gameMode === 'advanced' ? `${total - currentIndex} left` : '';
   dom.streakDisplay.textContent = streak >= 2 ? `${streak} streak` : '';
 
   dom.problem.textContent = `${q.a} × ${q.b}`;
@@ -134,20 +179,27 @@ function handleAnswer(btn, chosen, q) {
   if (chosen === q.answer) {
     btn.classList.add('correct');
     correctCount++;
+    totalAnswered++;
     streak++;
     if (streak > bestStreak) bestStreak = streak;
   } else {
     btn.classList.add('wrong');
+    totalAnswered++;
     streak = 0;
     missed.push({ a: q.a, b: q.b, answer: q.answer, chosen });
     buttons.forEach(b => {
       if (parseInt(b.textContent) === q.answer) b.classList.add('correct');
     });
+
+    if (gameMode === 'advanced') {
+      questions.push({ a: q.a, b: q.b, answer: q.answer });
+      retriesNeeded++;
+    }
   }
 
   setTimeout(() => {
     currentIndex++;
-    if (currentIndex >= TOTAL_QUESTIONS) {
+    if (currentIndex >= getTotalQuestions()) {
       showResults();
     } else {
       showQuestion();
@@ -160,7 +212,9 @@ function showResults() {
   dom.resultsScreen.classList.remove('hidden');
   dom.progressFill.style.width = '100%';
 
-  const pct = Math.round((correctCount / TOTAL_QUESTIONS) * 100);
+  const initialTotal = gameMode === 'advanced' ? 144 : TOTAL_QUESTIONS;
+  const firstPassCorrect = initialTotal - missed.length;
+  const pct = Math.round((firstPassCorrect / initialTotal) * 100);
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
   let grade, gradeColor;
@@ -172,11 +226,22 @@ function showResults() {
 
   dom.resultsGrade.textContent = grade;
   dom.resultsGrade.style.color = gradeColor;
-  dom.resultsScore.textContent = `${correctCount} out of ${TOTAL_QUESTIONS} correct (${pct}%)`;
-  dom.resultsTime.textContent = `Completed in ${elapsed}s`;
-  dom.resultsStreak.textContent = bestStreak >= 2 ? `Best streak: ${bestStreak}` : '';
 
-  if (pct === 100) {
+  if (gameMode === 'advanced') {
+    dom.resultsScore.textContent = `${firstPassCorrect} of ${initialTotal} on first try (${pct}%)`;
+    if (retriesNeeded > 0) {
+      dom.resultsStreak.textContent = `${retriesNeeded} retries needed · Best streak: ${bestStreak}`;
+    } else {
+      dom.resultsStreak.textContent = bestStreak >= 2 ? `Best streak: ${bestStreak}` : '';
+    }
+  } else {
+    dom.resultsScore.textContent = `${correctCount} out of ${TOTAL_QUESTIONS} correct (${pct}%)`;
+    dom.resultsStreak.textContent = bestStreak >= 2 ? `Best streak: ${bestStreak}` : '';
+  }
+
+  dom.resultsTime.textContent = `Completed in ${elapsed}s`;
+
+  if (gameMode === 'practice' && pct === 100) {
     mastered[selectedTable] = true;
     localStorage.setItem('mathFlashMastered', JSON.stringify(mastered));
     dom.tableButtons.querySelectorAll('.table-btn').forEach((btn, i) => {
@@ -184,10 +249,21 @@ function showResults() {
     });
   }
 
-  if (missed.length > 0) {
+  // Deduplicate missed list (advanced mode can have repeats)
+  const uniqueMissed = [];
+  const seen = new Set();
+  for (const m of missed) {
+    const key = `${m.a}x${m.b}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueMissed.push(m);
+    }
+  }
+
+  if (uniqueMissed.length > 0) {
     dom.missedSection.classList.remove('hidden');
     dom.missedList.innerHTML = '';
-    for (const m of missed) {
+    for (const m of uniqueMissed) {
       const item = document.createElement('div');
       item.className = 'missed-item';
       item.innerHTML = `

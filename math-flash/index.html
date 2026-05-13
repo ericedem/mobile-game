@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Math Flash Cards</title>
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -19,9 +19,19 @@
     <div id="menu-screen">
       <p class="menu-subtitle">Multiplication Tables</p>
 
+      <div id="mode-picker">
+        <button id="mode-practice" class="mode-btn selected">Practice</button>
+        <button id="mode-advanced" class="mode-btn">Advanced</button>
+      </div>
+
       <div id="table-picker">
         <p class="picker-label">Pick a table to practice:</p>
         <div id="table-buttons"></div>
+      </div>
+
+      <div id="advanced-info" class="hidden">
+        <p class="picker-label">All 144 combinations (1-12 × 1-12)</p>
+        <p class="picker-label">Wrong answers repeat until you get them right</p>
       </div>
 
       <button id="start-btn" class="primary-btn" disabled>Start</button>
@@ -33,6 +43,7 @@
       <div id="progress-bar"><div id="progress-fill"></div></div>
       <div id="score-row">
         <span id="score-display">0 / 0</span>
+        <span id="remaining-display"></span>
         <span id="streak-display"></span>
       </div>
 
@@ -60,6 +71,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=1"></script>
+  <script src="game.js?v=2"></script>
 </body>
 </html>
